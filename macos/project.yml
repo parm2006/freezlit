@@ -20,6 +20,7 @@ targets:
       - path: Freezlit
         excludes:
           - Web
+          - AppIcon.iconset
           - Info.plist
       - path: Freezlit/Web
         type: folder

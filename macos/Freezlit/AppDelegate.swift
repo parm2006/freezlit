@@ -1,6 +1,5 @@
 import AppKit
 
-@main
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
     private var smokeRunner: NativeSmokeRunner?
