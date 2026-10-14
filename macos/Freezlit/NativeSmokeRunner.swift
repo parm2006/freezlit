@@ -34,11 +34,7 @@ final class NativeSmokeRunner {
     }
 
     private func call(_ body: String, arguments: [String: Any] = [:]) async throws -> Any {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Any, Error>) in
-            controller.webView.callAsyncJavaScript(body, arguments: arguments, in: nil, contentWorld: .page) {
-                continuation.resume(with: $0)
-            }
-        }
+        try await controller.webView.callAsyncJavaScript(body, arguments: arguments, in: nil, contentWorld: .page) ?? NSNull()
     }
 
     private func wait(_ condition: String, _ label: String, seconds: Double = 15) async throws {

@@ -6,11 +6,7 @@ import XCTest
 final class NativeBridgeTests: XCTestCase {
     @MainActor
     private func call(_ webView: WKWebView, _ script: String) async throws -> Any {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Any, Error>) in
-            webView.callAsyncJavaScript(script, arguments: [:], in: nil, contentWorld: .page) {
-                continuation.resume(with: $0)
-            }
-        }
+        try await webView.callAsyncJavaScript(script, arguments: [:], in: nil, contentWorld: .page) ?? NSNull()
     }
 
     @MainActor
