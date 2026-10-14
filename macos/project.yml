@@ -1,0 +1,81 @@
+name: Freezlit
+options:
+  bundleIdPrefix: com.parm2006
+  deploymentTarget:
+    macOS: "13.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+    CODE_SIGNING_ALLOWED: NO
+    ENABLE_APP_SANDBOX: NO
+    ENABLE_HARDENED_RUNTIME: NO
+    ONLY_ACTIVE_ARCH: NO
+    ARCHS: "arm64 x86_64"
+targets:
+  Freezlit:
+    type: application
+    platform: macOS
+    sources:
+      - path: Freezlit
+        excludes:
+          - Web
+          - Info.plist
+      - path: Freezlit/Web
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.parm2006.freezlit
+        MARKETING_VERSION: "1.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: Freezlit/Info.plist
+      properties:
+        CFBundleDisplayName: Freezlit
+        CFBundleName: Freezlit
+        CFBundleIconFile: AppIcon
+        NSHighResolutionCapable: true
+        LSMinimumSystemVersion: "13.0"
+        NSPrincipalClass: NSApplication
+        NSHumanReadableCopyright: "Freezlit contributors. MIT licensed."
+  FreezlitTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: FreezlitTests
+    dependencies:
+      - target: Freezlit
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.parm2006.freezlit.tests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Freezlit.app/Contents/MacOS/Freezlit"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+  FreezlitUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: FreezlitUITests
+    dependencies:
+      - target: Freezlit
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.parm2006.freezlit.uitests
+        TEST_TARGET_NAME: Freezlit
+schemes:
+  Freezlit:
+    build:
+      targets:
+        Freezlit: all
+        FreezlitTests: [test]
+        FreezlitUITests: [test]
+    test:
+      gatherCoverageData: false
+      targets:
+        - name: FreezlitTests
+          parallelizable: false
+        - name: FreezlitUITests
+          parallelizable: false

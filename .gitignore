@@ -7,3 +7,10 @@ dist/
 library*.json
 node_modules/
 .DS_Store
+
+# Generated native Mac project/resources
+macos/Freezlit/Web/
+macos/Freezlit/AppIcon.iconset/
+macos/Freezlit/AppIcon.icns
+macos/Freezlit/Info.plist
+macos/Freezlit.xcodeproj/

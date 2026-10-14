@@ -1,16 +1,28 @@
 # freezlit
 
-A free Windows study app that keeps your cards, images, and progress on your computer. No account or subscription. Independently built around familiar Quizlet study modes and Anki-style scheduled recall.
+A free Windows and Mac study app that keeps your cards, images, and progress on your computer. No account or subscription. Independently built around familiar Quizlet study modes and Anki-style scheduled recall.
 
-## Install
+## Windows install
 
 Download **Freezlit-Windows-v1.1.zip** from [Releases](https://github.com/parm2006/freezlit/releases), extract it, then run **Install Freezlit.cmd**. It installs for your Windows user and adds Desktop and Start Menu shortcuts. No administrator access is needed. You can also run **Freezlit.exe** directly from the extracted folder.
 
 **Python is bundled in Freezlit.exe; no Python or pip installation is needed to use the release.** Windows 10/11, 64-bit, with Microsoft Edge WebView2 Runtime is required. Most Windows installations already have it. If the app reports it missing, install the [Microsoft WebView2 Evergreen Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/). The executable is unsigned; Windows may show a reputation warning.
 
+## Mac install
+
+Download **Freezlit-macOS.dmg** or **Freezlit-macOS.zip** from the same release. Open the disk image and drag **Freezlit.app** to Applications, or extract the ZIP and move the app there. macOS 13 or later is required; the app is built for Apple Silicon and Intel. No Python, Node, or paid Apple Developer membership is needed to run it.
+
+This build is ad-hoc signed for bundle integrity but is not Developer-ID signed or notarized. macOS may block the first launch. See [Apple’s instructions for opening an app from an unknown developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac). The normal approval is made by the person using the Mac; no security settings are disabled by the app.
+
+The native Mac app embeds the study interface and uses macOS files, save dialogs, and speech. It does not start Python or a local HTTP server. Its data is stored in `~/Library/Application Support/Freezlit/library.json`, with a previous copy. Export/import JSON moves study decks and progress between Windows and Mac; there is no automatic synchronization.
+
+## Mac verification
+
+GitHub’s macOS runner builds both processor architectures, runs native storage/bridge tests and the actual application, and captures test results and screenshots. The release uses the successful cloud build. These checks establish behavior on the tested cloud Mac, rather than on every Mac model. Build source and commands are documented in [macos/README.md](macos/README.md). iOS shares the JavaScript study logic in principle but is not included in this Mac release.
+
 ## Version 1.1
 
-Fresh installations include only the **Active Recall** starter deck. Right-click a deck in the library and choose **Delete deck** to remove it. Keyboard users can focus a deck and press **Shift+F10**. Deletion asks for confirmation and also removes that deck’s saved tests and progress. Upgrades preserve your existing library; older starter decks can be removed through this menu.
+Fresh installations include only the **Active Recall** starter deck. Right-click a deck in the library and choose **Delete deck** to remove it. Keyboard users can focus a deck and press **Shift+F10**. Deletion asks for confirmation and also removes that deck’s saved tests and progress. Upgrades automatically retire the unchanged Spanish starter set shipped in older versions. Its original cards and progress remain archived inside the exported library; edited Spanish decks remain visible. Other decks can be removed through the library menu.
 
 The interface, app window and executable use the splayed flashcard-deck icon.
 
@@ -63,4 +75,6 @@ python -m unittest discover -s tests -p "test_*.py"
 node tests/test_engine.mjs
 ```
 
-See [VERIFICATION.md](VERIFICATION.md) for tested behavior. The source is MIT licensed. Bundled third-party runtime licenses are included with the release.
+See [VERIFICATION.md](VERIFICATION.md) for tested behavior. The native Mac build uses `npm ci`, `npm run native:web`, XcodeGen and Xcode on macOS; Windows users can use the repository’s macOS GitHub Actions build. The study engine and starter/storage contracts are shared.
+
+The source is MIT licensed. Bundled third-party runtime licenses are included with the release.

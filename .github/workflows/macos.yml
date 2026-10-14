@@ -1,0 +1,114 @@
+name: Native macOS build and verification
+on:
+  push:
+    paths:
+      - 'macos/**'
+      - 'scripts/build-native-web.mjs'
+      - 'web/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/macos.yml'
+  pull_request:
+    paths:
+      - 'macos/**'
+      - 'scripts/build-native-web.mjs'
+      - 'web/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/macos.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-macos:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Shared web regression tests
+        run: |
+          npm ci
+          npm test
+          npm run native:web
+      - name: Generate native project and app icon
+        run: |
+          brew install xcodegen
+          swift macos/tools/render-icon.swift macos/Freezlit/AppIcon.iconset
+          iconutil -c icns macos/Freezlit/AppIcon.iconset -o macos/Freezlit/AppIcon.icns
+          xcodegen generate --spec macos/project.yml
+      - name: Build native tests
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild -project macos/Freezlit.xcodeproj -scheme Freezlit -configuration Debug \
+            -destination "platform=macOS,arch=$(uname -m)" -derivedDataPath build/macos-tests \
+            CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES build-for-testing | tee build/native-build.log
+      - name: Run native storage, WKWebView bridge, and app UI tests
+        run: |
+          set -o pipefail
+          xcodebuild -project macos/Freezlit.xcodeproj -scheme Freezlit -configuration Debug \
+            -destination "platform=macOS,arch=$(uname -m)" -derivedDataPath build/macos-tests \
+            -resultBundlePath build/Freezlit-native-tests.xcresult \
+            CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES test-without-building | tee build/native-tests.log
+      - name: Build universal macOS release
+        run: |
+          set -o pipefail
+          xcodebuild -project macos/Freezlit.xcodeproj -scheme Freezlit -configuration Release \
+            -destination 'generic/platform=macOS' -derivedDataPath build/macos-release \
+            CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=NO ARCHS='arm64 x86_64' build | tee build/native-release.log
+          app=build/macos-release/Build/Products/Release/Freezlit.app
+          mkdir -p "$app/Contents/Resources/Licenses"
+          cp LICENSE "$app/Contents/Resources/Licenses/Freezlit-LICENSE"
+          cp node_modules/esbuild/LICENSE.md "$app/Contents/Resources/Licenses/esbuild-LICENSE.md"
+          cp macos/README.md "$app/Contents/Resources/README-macOS.md"
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --strict "$app"
+          lipo -archs "$app/Contents/MacOS/Freezlit" | tee build/universal-architectures.txt
+          grep -q arm64 build/universal-architectures.txt
+          grep -q x86_64 build/universal-architectures.txt
+      - name: Launch actual release app and capture native proof
+        run: |
+          mkdir -p build/native-proof
+          python3 - <<'PY'
+          import os, pathlib, subprocess
+          root = pathlib.Path.cwd()
+          env = os.environ.copy()
+          env['FREEZLIT_DATA_DIR'] = str(root / 'build/native-proof/isolated-data')
+          env['FREEZLIT_SMOKE_OUTPUT'] = str(root / 'build/native-proof')
+          app = root / 'build/macos-release/Build/Products/Release/Freezlit.app/Contents/MacOS/Freezlit'
+          subprocess.run([str(app), '--smoke-test'], env=env, timeout=120, check=True)
+          PY
+      - name: Package locally installable app ZIP and DMG
+        run: |
+          mkdir -p dist build/dmg
+          app=build/macos-release/Build/Products/Release/Freezlit.app
+          ditto -c -k --sequesterRsrc --keepParent "$app" dist/Freezlit-macOS.zip
+          ditto "$app" build/dmg/Freezlit.app
+          ln -s /Applications build/dmg/Applications
+          cp macos/README.md build/dmg/README-macOS.md
+          hdiutil create -volname Freezlit -srcfolder build/dmg -ov -format UDZO dist/Freezlit-macOS.dmg
+          git archive --format=zip HEAD -o dist/Freezlit-source.zip
+          shasum -a 256 dist/Freezlit-macOS.zip dist/Freezlit-macOS.dmg dist/Freezlit-source.zip > dist/SHA256SUMS-macOS.txt
+      - name: Upload native installable artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Freezlit-macOS
+          path: dist/
+          if-no-files-found: error
+      - name: Upload actual native test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Freezlit-macOS-verification
+          path: |
+            build/Freezlit-native-tests.xcresult
+            build/native-proof/
+            build/native-build.log
+            build/native-tests.log
+            build/native-release.log
+            build/universal-architectures.txt
+          if-no-files-found: warn

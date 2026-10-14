@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/test_engine.mjs"
+    "test": "node tests/test_engine.mjs && node tests/test_starter_data.mjs && node tests/test_storage.mjs",
+    "native:web": "node scripts/build-native-web.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }
