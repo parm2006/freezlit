@@ -123,8 +123,10 @@ final class NativeSmokeRunner {
         _ = try await call("document.querySelector('#test-form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));return true;")
         try await wait("document.querySelector('.test-score')", "The native test did not grade.")
         try await Task.sleep(nanoseconds: 350_000_000)
-        _ = try await call("location.reload();return true;")
-        try await wait("document.querySelectorAll('.test-question').length===20 && document.querySelector('.test-score')", "Native reload did not preserve the test and score.")
+        controller.webView.reload()
+        try await wait("document.querySelector('.study-card')", "Native reload did not return to the default flashcard view.")
+        try await click("[data-mode='test']")
+        try await wait("document.querySelectorAll('.test-question').length===20 && document.querySelector('.test-score')", "The saved test and score were not restored after native reload.")
         checks.append("Exact 20-question test, tab persistence, grading, and reload persistence in WKWebView")
 
         controller.exportDestinationForTesting = outputDirectory.appendingPathComponent("native-export.json")
