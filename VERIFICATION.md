@@ -8,5 +8,7 @@ Tested on Windows on October 14, 2026. Test data was isolated from the user's li
 - **Authoring checks passed:** Unicode text, image attachment, saved images after reload, generated cloze cards, rectangle-masked image cards, and written-practice completion.
 - **Native Windows WebView2 integration passed:** card flip/navigation/reverse, persistent scheduled review, mode launching, mixed test generation/grading, editor image upload, restart persistence, and full JSON backup export through the native save handler. The automated export test substituted the human file-dialog selection and verified the exported file contents.
 - **Layout inspected:** 1360px desktop and 600px/390px narrow widths, without document overflow. Keyboard image uploads, focused-button Space activation, and narrow create-deck access corrected after independent review.
+- **Packaged executable passed:** isolated headless startup, all four bundled frontend assets matched their source bytes, and embedded image/Unicode text saved to local JSON.
+- **Frozen native executable passed:** the packaged app opened its own 1180 × 800 WindowsForms/WebView2 window, ran its bundled frontend, created the starter library locally, and closed normally. No separate Python installation was used to launch the executable.
 
 Packaging verification and artifact checksums are supplied with the release. These checks do not establish full Quizlet/Anki compatibility, universal Windows hardware compatibility, offline availability of every installed speech voice, or network classroom support.

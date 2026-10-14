@@ -1,1 +1,298 @@
-{"name":"freezlit","mode":"operate","colors":{"ground":"#f6f5ef","paper":"#ffffff","ink":"#243c33","muted":"#5d6d64","primary":"#236349","tint":"#e8eee6","line":"#d9dfd5","danger":"#a43b37"},"typography":{"body":{"fontFamily":"Segoe UI, Arial, sans-serif","fontSize":"15px"},"display":{"fontFamily":"Georgia, serif","fontSize":"38px","fontWeight":500}},"rounded":{"control":"8px","paper":"16px"},"spacing":[4,8,12,16,24,32,48],"focus":{"outline":"3px solid #529575","outlineOffset":"3px"},"breakpoints":[760,1050,1500]}
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-14T08:24:11Z",
+  "title": "Design System: freezlit",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Forest green",
+        "tonalRamp": [
+          "oklch(0.15 0.08 150)",
+          "oklch(0.26 0.08 150)",
+          "oklch(0.38 0.08 150)",
+          "oklch(0.5 0.08 150)",
+          "oklch(0.62 0.08 150)",
+          "oklch(0.74 0.08 150)",
+          "oklch(0.86 0.08 150)",
+          "oklch(0.95 0.08 150)"
+        ]
+      },
+      "primary-hover": {
+        "role": "primary",
+        "displayName": "Deep forest green",
+        "tonalRamp": [
+          "oklch(0.15 0.07 150)",
+          "oklch(0.26 0.07 150)",
+          "oklch(0.38 0.07 150)",
+          "oklch(0.5 0.07 150)",
+          "oklch(0.62 0.07 150)",
+          "oklch(0.74 0.07 150)",
+          "oklch(0.86 0.07 150)",
+          "oklch(0.95 0.07 150)"
+        ]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Warm ground",
+        "tonalRamp": [
+          "oklch(0.15 0.015 95)",
+          "oklch(0.26 0.015 95)",
+          "oklch(0.38 0.015 95)",
+          "oklch(0.5 0.015 95)",
+          "oklch(0.62 0.015 95)",
+          "oklch(0.74 0.015 95)",
+          "oklch(0.86 0.015 95)",
+          "oklch(0.95 0.015 95)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "White paper",
+        "tonalRamp": [
+          "oklch(0.15 0 95)",
+          "oklch(0.26 0 95)",
+          "oklch(0.38 0 95)",
+          "oklch(0.5 0 95)",
+          "oklch(0.62 0 95)",
+          "oklch(0.74 0 95)",
+          "oklch(0.86 0 95)",
+          "oklch(0.95 0 95)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Green ink",
+        "tonalRamp": [
+          "oklch(0.15 0.03 155)",
+          "oklch(0.26 0.03 155)",
+          "oklch(0.38 0.03 155)",
+          "oklch(0.5 0.03 155)",
+          "oklch(0.62 0.03 155)",
+          "oklch(0.74 0.03 155)",
+          "oklch(0.86 0.03 155)",
+          "oklch(0.95 0.03 155)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted green-gray",
+        "tonalRamp": [
+          "oklch(0.15 0.02 150)",
+          "oklch(0.26 0.02 150)",
+          "oklch(0.38 0.02 150)",
+          "oklch(0.5 0.02 150)",
+          "oklch(0.62 0.02 150)",
+          "oklch(0.74 0.02 150)",
+          "oklch(0.86 0.02 150)",
+          "oklch(0.95 0.02 150)"
+        ]
+      },
+      "tint": {
+        "role": "neutral",
+        "displayName": "Pale green tint",
+        "tonalRamp": [
+          "oklch(0.15 0.02 140)",
+          "oklch(0.26 0.02 140)",
+          "oklch(0.38 0.02 140)",
+          "oklch(0.5 0.02 140)",
+          "oklch(0.62 0.02 140)",
+          "oklch(0.74 0.02 140)",
+          "oklch(0.86 0.02 140)",
+          "oklch(0.95 0.02 140)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Pale green border",
+        "tonalRamp": [
+          "oklch(0.15 0.015 130)",
+          "oklch(0.26 0.015 130)",
+          "oklch(0.38 0.015 130)",
+          "oklch(0.5 0.015 130)",
+          "oklch(0.62 0.015 130)",
+          "oklch(0.74 0.015 130)",
+          "oklch(0.86 0.015 130)",
+          "oklch(0.95 0.015 130)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Library ground",
+        "tonalRamp": [
+          "oklch(0.15 0.02 115)",
+          "oklch(0.26 0.02 115)",
+          "oklch(0.38 0.02 115)",
+          "oklch(0.5 0.02 115)",
+          "oklch(0.62 0.02 115)",
+          "oklch(0.74 0.02 115)",
+          "oklch(0.86 0.02 115)",
+          "oklch(0.95 0.02 115)"
+        ]
+      },
+      "selected-deck": {
+        "role": "neutral",
+        "displayName": "Selected library row",
+        "tonalRamp": [
+          "oklch(0.15 0.025 135)",
+          "oklch(0.26 0.025 135)",
+          "oklch(0.38 0.025 135)",
+          "oklch(0.5 0.025 135)",
+          "oklch(0.62 0.025 135)",
+          "oklch(0.74 0.025 135)",
+          "oklch(0.86 0.025 135)",
+          "oklch(0.95 0.025 135)"
+        ]
+      },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Failure red",
+        "tonalRamp": [
+          "oklch(0.15 0.11 27)",
+          "oklch(0.26 0.11 27)",
+          "oklch(0.38 0.11 27)",
+          "oklch(0.5 0.11 27)",
+          "oklch(0.62 0.11 27)",
+          "oklch(0.74 0.11 27)",
+          "oklch(0.86 0.11 27)",
+          "oklch(0.95 0.11 27)"
+        ]
+      },
+      "clay": {
+        "role": "secondary",
+        "displayName": "Clay deck marker",
+        "tonalRamp": [
+          "oklch(0.15 0.08 50)",
+          "oklch(0.26 0.08 50)",
+          "oklch(0.38 0.08 50)",
+          "oklch(0.5 0.08 50)",
+          "oklch(0.62 0.08 50)",
+          "oklch(0.74 0.08 50)",
+          "oklch(0.86 0.08 50)",
+          "oklch(0.95 0.08 50)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display heading",
+        "purpose": "Page-level headings."
+      },
+      "deck-title": {
+        "displayName": "Deck title",
+        "purpose": "Selected deck identity."
+      },
+      "study": {
+        "displayName": "Recall face",
+        "purpose": "Flashcard and recall content."
+      },
+      "title": {
+        "displayName": "Section title",
+        "purpose": "Functional section headings."
+      },
+      "body": {
+        "displayName": "Windows body",
+        "purpose": "Reading and ordinary controls."
+      },
+      "label": {
+        "displayName": "Utility label",
+        "purpose": "Compact navigation and secondary controls."
+      }
+    },
+    "shadows": [
+      {
+        "name": "study-paper",
+        "value": "0 6px 22px #243c3308",
+        "purpose": "Faint separation of the active recall surface."
+      },
+      {
+        "name": "toast",
+        "value": "0 8px 24px #243c3326",
+        "purpose": "Temporary feedback above document content."
+      }
+    ],
+    "motion": [
+      {
+        "name": "button-state",
+        "value": "background .15s, color .15s",
+        "purpose": "Subtle button hover feedback."
+      },
+      {
+        "name": "toast-state",
+        "value": "opacity .2s, transform .2s",
+        "purpose": "Temporary message visibility; disabled for reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-desktop",
+        "value": "1050px"
+      },
+      {
+        "name": "narrow",
+        "value": "760px"
+      },
+      {
+        "name": "wide",
+        "value": "1500px"
+      }
+    ],
+    "focus": {
+      "outline": "3px solid #529575",
+      "outlineOffset": "3px",
+      "fileUpload": "Visually hidden native input with a visible focus-within label."
+    },
+    "browserSurfaces": {
+      "selection": "background: #c9decf; color: var(--ink)",
+      "caret": "Uses inherited foreground",
+      "scrollbar": "Rounded pale green thumb",
+      "numerals": "Tabular counters"
+    }
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The principal action for the current task.",
+      "html": "<button class=\"primary-button\">Start review</button>",
+      "css": ".primary-button{font:600 15px \"Segoe UI\",Arial,sans-serif;background:var(--green,#236349);color:white;padding:12px 22px;border:1px solid transparent;border-radius:8px;cursor:pointer;transition:background .15s,color .15s}.primary-button:hover{background:#174d37}.primary-button:focus-visible{outline:3px solid #529575;outline-offset:3px}.primary-button:disabled{opacity:.45;cursor:default}"
+    },
+    {
+      "name": "Text input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Local authoring and written recall.",
+      "html": "<label class=\"field\">Your answer<input placeholder=\"Type what you remember\"></label>",
+      "css": ".field{display:flex;flex-direction:column;gap:8px;color:var(--ink,#243c33);font:14px \"Segoe UI\",Arial,sans-serif}.field input{font:15px \"Segoe UI\",Arial,sans-serif;color:inherit;background:var(--paper,#fff);border:1px solid var(--line,#d9dfd5);border-radius:8px;padding:10px 12px;min-width:0}.field input::placeholder{color:#69756e}.field input:focus{border-color:var(--green,#236349)}.field input:focus-visible{outline:3px solid #529575;outline-offset:3px}"
+    },
+    {
+      "name": "Study card",
+      "kind": "card",
+      "refersTo": "study-card",
+      "description": "A large calm surface for one recall prompt.",
+      "html": "<div class=\"recall-card\"><span class=\"side-label\">Term / front</span><div class=\"recall-face\">Active recall</div><span class=\"side-label\">Think of the answer · press Space to reveal</span></div>",
+      "css": ".recall-card{box-sizing:border-box;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:22px;padding:28px 32px;background:var(--paper,#fff);color:var(--ink,#243c33);border:1px solid var(--line,#d9dfd5);border-radius:16px;box-shadow:0 6px 22px #243c3308}.side-label{font:12px \"Segoe UI\",Arial,sans-serif;color:var(--muted,#5d6d64)}.recall-face{font:30px/1.5 Georgia,serif;overflow-wrap:anywhere;text-align:center}"
+    }
+  ],
+  "narrative": {
+    "overview": "The user asked for a basic, pleasant local quiz app. Preserve the existing quiet study interface: warm paper, restrained green controls, familiar Windows body typography and serif recall prompts. This document refreshes the implemented system; it does not replace its direction or claim that the design workshop tools succeeded.\n\nThe library leads into one focused deck pane. Study modes, recall controls and editable content remain close together. The generous flashcard face supports text and images without ornamental dashboard panels.",
+    "keyCharacteristics": [
+      "Quiet paper surfaces with green action and selection states.",
+      "Familiar controls and visible keyboard focus.",
+      "A focused recall pane followed by straightforward card rows."
+    ],
+    "rules": [],
+    "dos": [
+      "Do preserve the calm paper-and-green palette and clear active study surface.",
+      "Do keep imported images contained and readable on both card sides.",
+      "Do preserve visible keyboard focus and native interactive control behavior.",
+      "Do keep creation, editing, study direction and export actions easy to find."
+    ],
+    "donts": [
+      "Don't replace the user's simple desktop brief with an ornamental dashboard.",
+      "Don't turn secondary labels or utility controls into competing headings.",
+      "Don't describe simplified games or generated cards as exact Quizlet or Anki implementations."
+    ]
+  }
+}
