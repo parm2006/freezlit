@@ -18,7 +18,7 @@ The native Mac app embeds the study interface and uses macOS files, save dialogs
 
 ## Mac verification
 
-GitHub’s macOS runner builds both processor architectures, runs native storage/bridge tests and the actual application, and captures test results and screenshots. The release uses the successful cloud build. These checks establish behavior on the tested cloud Mac, rather than on every Mac model. Build source and commands are documented in [macos/README.md](macos/README.md). iOS shares the JavaScript study logic in principle but is not included in this Mac release.
+GitHub’s macOS runner builds both processor architectures, runs native storage/bridge tests and the actual application, and captures test results and screenshots. The release uses the [successful cloud build](https://github.com/parm2006/freezlit/actions/runs/38609075619): eight native tests passed on ARM64 macOS 15.7.9, followed by checks in the running release app. Intel was compiled and checked for its executable slice, but was not run on an Intel Mac. These checks establish behavior on the tested cloud Mac, rather than on every Mac model. Build source and commands are documented in [macos/README.md](macos/README.md). iOS shares the JavaScript study logic in principle but is not included in this Mac release.
 
 ## Version 1.1
 
@@ -49,7 +49,7 @@ To make a deck, use the **+** beside Your library. Images can be added independe
 
 Saved under `%LOCALAPPDATA%\Freezlit\library.json`, with `library.previous.json` retained after each successful update. Images are embedded in the library. Export a full backup before moving computers or uninstalling. JSON imports add decks and preserve existing cards. Imported copies of existing deck IDs receive new IDs.
 
-The application binds only to your computer's loopback interface, checks request origins, and uses atomic file replacement. No telemetry, accounts, external fonts, or hosted content. System speech voices may depend on internet connectivity. Total library limit: 100 MB; each uploaded image: 8 MB.
+The Windows application binds only to your computer's loopback interface and checks request origins. The native Mac app uses a local file bridge and blocks outbound navigation. Both use atomic file replacement. No telemetry, accounts, external fonts, or hosted content. System speech voices may depend on internet connectivity. Total library limit: 100 MB; each uploaded image: 8 MB.
 
 ## Scope
 
@@ -64,7 +64,7 @@ python -m pip install -r requirements.txt
 python server.py
 ```
 
-The app opens in its own desktop window. A headless local-server mode for development is available with `python server.py --no-browser --port 8765`. `FREEZLIT_DATA_DIR` can select an isolated storage directory. Source can also run with pywebview's platform prerequisites on macOS/Linux; the packaged release is tested on Windows only.
+The app opens in its own desktop window. A headless local-server mode for development is available with `python server.py --no-browser --port 8765`. `FREEZLIT_DATA_DIR` can select an isolated storage directory. Source can also run with pywebview's platform prerequisites on macOS/Linux; the Python-based packaged edition is tested on Windows; the native Mac edition uses the separate macOS build described above.
 
 ## Build and test
 
@@ -72,7 +72,8 @@ The app opens in its own desktop window. A headless local-server mode for develo
 python -m pip install -r requirements-build.txt
 python build.py --output dist --work build
 python -m unittest discover -s tests -p "test_*.py"
-node tests/test_engine.mjs
+npm ci
+npm test
 ```
 
 See [VERIFICATION.md](VERIFICATION.md) for tested behavior. The native Mac build uses `npm ci`, `npm run native:web`, XcodeGen and Xcode on macOS; Windows users can use the repository’s macOS GitHub Actions build. The study engine and starter/storage contracts are shared.
