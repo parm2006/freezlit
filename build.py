@@ -16,7 +16,9 @@ output.mkdir(parents=True, exist_ok=True)
 subprocess.run([
     sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onefile", "--windowed",
     "--collect-all", "webview", "--collect-all", "pythonnet", "--collect-all", "clr_loader",
-    "--name", "Freezlit", "--distpath", str(output), "--workpath", str(work),
+    "--name", "Freezlit", "--icon", str(root / "assets" / "freezlit.ico"),
+    "--distpath", str(output), "--workpath", str(work),
     "--specpath", str(work), "--add-data", str(root / "web") + ":web",
+    "--add-data", str(root / "assets") + ":assets",
     str(root / "server.py"),
 ], check=True, cwd=root)

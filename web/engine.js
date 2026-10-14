@@ -33,7 +33,18 @@ export function makeTest(cards,direction,types,count){
  if(!Number.isInteger(count)||count<1||count>100000)throw Error('Choose a question count from 1 to 100000.');
  const eligible=cards.filter(c=>face(c,direction).answer.trim());
  if(!eligible.length)throw Error('Tests need text on the answer side. Switch direction, add text, or use Flashcards and spaced review for image-only answers.');
- const pool=shuffle(eligible);return pool.slice(0,count).map((card,i)=>{const f=face(card,direction);let type=types[i%types.length];if(['choice','matching'].includes(type)&&eligible.length<2)type='written';const options=shuffle([f.answer,...shuffle(eligible.filter(c=>c.id!==card.id)).map(c=>face(c,direction).answer).filter((a,j,arr)=>a!==f.answer&&arr.indexOf(a)===j).slice(0,3)]);const truth=Math.random()>.5;return {id:uid(),cardId:card.id,...f,type,options,statement:truth?f.answer:options.find(a=>a!==f.answer)||f.answer,truth:truth||options.length===1,input:'',graded:false}})
+ // Cover every eligible card once before repeating a fresh shuffled cycle.
+ // Swap the next cycle's first card when it would immediately repeat the last.
+ const pool=[];
+ while(pool.length<count){
+  const cycle=shuffle(eligible);
+  if(cycle.length>1&&pool.length&&cycle[0].id===pool[pool.length-1].id){
+   const swapIndex=cycle.findIndex(c=>c.id!==cycle[0].id);
+   if(swapIndex>0)[cycle[0],cycle[swapIndex]]=[cycle[swapIndex],cycle[0]];
+  }
+  pool.push(...cycle.slice(0,count-pool.length));
+ }
+ return pool.map((card,i)=>{const f=face(card,direction);let type=types[i%types.length];if(['choice','matching'].includes(type)&&eligible.length<2)type='written';const options=shuffle([f.answer,...shuffle(eligible.filter(c=>c.id!==card.id)).map(c=>face(c,direction).answer).filter((a,j,arr)=>a!==f.answer&&arr.indexOf(a)===j).slice(0,3)]);const truth=Math.random()>.5;return {id:uid()+'-'+i,cardId:card.id,...f,additionalInfo:card.additionalInfo||'',type,options,statement:truth?f.answer:options.find(a=>a!==f.answer)||f.answer,truth:truth||options.length===1,input:'',graded:false}})
 }
 export function grade(q,strict=false){if(q.type==='tf')return q.input===String(q.truth);if(q.type==='choice'||q.type==='matching')return q.input===q.answer;return correct(q.input,q.answer,strict)}
 export function parseDelimited(text,delimiter='\t'){
@@ -68,6 +79,7 @@ export function validateLibrary(value){
    if(c.buriedUntil!==undefined&&!timestamp(c.buriedUntil))throw Error('A card has an invalid burial date.');
    if(c.tags!==undefined&&(!Array.isArray(c.tags)||c.tags.some(t=>typeof t!=='string')))throw Error('Card tags must be text.');
    if(c.notes!==undefined&&typeof c.notes!=='string')throw Error('Card notes must be text.');
+   if(c.additionalInfo!==undefined&&typeof c.additionalInfo!=='string')throw Error('Card additional information must be text.');
    if(c.schedule===undefined)c.schedule={};
    if(!object(c.schedule)||Object.keys(c.schedule).some(k=>!['forward','reverse'].includes(k)))throw Error('A card has invalid review directions.');
    for(const s of Object.values(c.schedule)){

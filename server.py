@@ -225,7 +225,9 @@ def main():
             # prompts with a native SaveFileDialog before writing exported JSON.
             webview.settings["ALLOW_DOWNLOADS"] = True
             webview.create_window("Freezlit", url, width=1180, height=800, min_size=(760, 600), background_color="#F6F5F1")
-            webview.start(gui="edgechromium" if sys.platform == "win32" else None, private_mode=True)
+            icon_path = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) / "assets" / "freezlit.ico"
+            webview.start(gui="edgechromium" if sys.platform == "win32" else None, private_mode=True,
+                          icon=str(icon_path) if icon_path.is_file() else None)
         except Exception as exc:
             # Windowed Windows builds have no console: make launch failures visible.
             message = f"Freezlit could not open its desktop window. Ensure Microsoft Edge WebView2 Runtime is installed.\n\n{exc}"

@@ -56,10 +56,10 @@ await test('Tests grade choice, true/false, matching and written answers',()=>{
  assert.ok(E.grade({type:'tf',truth:false,input:'false'}));assert.equal(E.grade({type:'tf',truth:true,input:''}),false);
  for(const type of ['choice','matching','written'])assert.ok(E.grade({type,answer:'Answer',input:'Answer'}));
 });
-await test('Generated tests contain bounded unique cards and valid options',()=>{
+await test('Generated tests honor requested count and contain valid options',()=>{
  const cards=[card('a'),card('b'),card('c'),card('d')];
  const qs=E.makeTest(cards,'reverse',['choice','tf','written','matching'],99);
- assert.equal(qs.length,4);assert.equal(new Set(qs.map(q=>q.cardId)).size,4);
+ assert.equal(qs.length,99);assert.equal(new Set(qs.map(q=>q.cardId)).size,4);assert.equal(new Set(qs.map(q=>q.id)).size,99);
  for(const q of qs){assert.ok(q.options.includes(q.answer));assert.equal(new Set(q.options).size,q.options.length);if(q.type==='tf')assert.equal(q.statement===q.answer,q.truth)}
 });
 await test('Single-card test falls back from choices and matching to written',()=>{
@@ -69,7 +69,7 @@ await test('Empty selected question types are rejected',()=>assert.throws(()=>E.
 await test('Image-only answers cannot become empty auto-graded test questions',()=>{
  const image=card('image',{definition:'',definitionImage:'data:image/png;base64,iVBORw0KGgo='});
  assert.throws(()=>E.makeTest([image],'forward',['written'],1));
- const qs=E.makeTest([image,card('text')],'forward',['choice'],2);assert.equal(qs.length,1);assert.equal(qs[0].answer,'Answer text');
+ const qs=E.makeTest([image,card('text')],'forward',['choice'],2);assert.equal(qs.length,2);assert.ok(qs.every(q=>q.answer==='Answer text'));assert.equal(new Set(qs.map(q=>q.id)).size,2);
  const reverse=E.makeTest([image],'reverse',['written'],1);assert.ok(reverse[0].promptImage);assert.equal(reverse[0].answer,'Term image');
 });
 await test('Repeated Easy ratings cannot produce unbounded review intervals',()=>{
@@ -98,6 +98,68 @@ await test('Library rejects malformed history before queue can crash',()=>assert
 await test('Library rejects invalid limits and corrupt scheduling state',()=>{
  assert.throws(()=>E.validateLibrary(lib({settings:{newLimit:-4,reviewLimit:'oops'}})));
  assert.throws(()=>E.validateLibrary(lib({}, {schedule:{forward:{due:'bad',interval:-3,ease:null}}})));
+});
+await test('Twenty questions from eight cards cover full shuffled cycles without adjacent repeats',()=>{
+ const cards=Array.from({length:8},(_,i)=>card(String(i)));
+ const qs=E.makeTest(cards,'forward',['choice','written','tf','matching'],20);
+ assert.equal(qs.length,20);assert.equal(new Set(qs.map(q=>q.id)).size,20);
+ for(const start of [0,8])assert.equal(new Set(qs.slice(start,start+8).map(q=>q.cardId)).size,8);
+ assert.equal(new Set(qs.slice(16).map(q=>q.cardId)).size,4);
+ for(let i=1;i<qs.length;i++)assert.notEqual(qs[i].cardId,qs[i-1].cardId);
+ assert.deepEqual(qs.map(q=>q.type),Array.from({length:20},(_,i)=>['choice','written','tf','matching'][i%4]));
+});
+await test('Two-card cycles never repeat the preceding card at a boundary',()=>{
+ const qs=E.makeTest([card('a'),card('b')],'forward',['written'],40);
+ assert.equal(qs.length,40);
+ for(let i=1;i<qs.length;i++)assert.notEqual(qs[i].cardId,qs[i-1].cardId);
+});
+await test('Single-card deck produces requested count with unique IDs and written fallback',()=>{
+ const qs=E.makeTest([card('only')],'forward',['choice','matching'],20);
+ assert.equal(qs.length,20);assert.equal(new Set(qs.map(q=>q.id)).size,20);
+ assert.ok(qs.every(q=>q.cardId==='only'&&q.type==='written'));
+});
+await test('Requested count below deck size stays unique and leaves source cards untouched',()=>{
+ const cards=[card('a'),card('b'),card('c'),card('d')];const snapshot=JSON.stringify(cards);
+ const qs=E.makeTest(cards,'reverse',['written'],2);
+ assert.equal(qs.length,2);assert.equal(new Set(qs.map(q=>q.cardId)).size,2);assert.equal(JSON.stringify(cards),snapshot);
+});
+await test('Repeated tests filter image-only answers independently for each direction',()=>{
+ const image='data:image/png;base64,iVBORw0KGgo=';
+ const cards=[card('front-image',{term:'',termImage:image}),card('back-image',{definition:'',definitionImage:image})];
+ const forward=E.makeTest(cards,'forward',['choice'],7);
+ assert.equal(forward.length,7);assert.ok(forward.every(q=>q.cardId==='front-image'&&q.promptImage===image&&q.answer==='Answer front-image'&&q.type==='written'));
+ const reverse=E.makeTest(cards,'reverse',['matching'],7);
+ assert.equal(reverse.length,7);assert.ok(reverse.every(q=>q.cardId==='back-image'&&q.promptImage===image&&q.answer==='Term back-image'&&q.type==='written'));
+ assert.equal(new Set([...forward,...reverse].map(q=>q.id)).size,14);
+});
+await test('Invalid requested question counts fail instead of silently changing count',()=>{
+ for(const count of [0,-1,1.5,100001,NaN])assert.throws(()=>E.makeTest([card('a')],'forward',['written'],count));
+});
+await test('Additional information survives generated tests without becoming a required answer',()=>{
+ const kofun=card('kofun',{term:'Kofun Period',definition:'300-538',additionalInfo:'Named after large burial mounds.'});
+ const questions=E.makeTest([kofun],'forward',['written','choice','tf','matching'],8);
+ assert.equal(questions.length,8);
+ for(const q of questions){
+  assert.equal(q.additionalInfo,kofun.additionalInfo);assert.equal(q.prompt,'Kofun Period');assert.equal(q.answer,'300-538');
+  if(q.type==='tf'){q.input=String(q.truth);assert.ok(E.grade(q));continue}
+  q.input='300-538';assert.ok(E.grade(q));assert.ok(E.grade(q,true));
+  q.input='Named after large burial mounds.';assert.equal(E.grade(q),false);
+  q.input='300-538 Named after large burial mounds.';assert.equal(E.grade(q),false);
+ }
+ const reverse=E.makeTest([kofun],'reverse',['written'],1)[0];
+ assert.equal(reverse.additionalInfo,kofun.additionalInfo);assert.equal(reverse.prompt,'300-538');assert.equal(reverse.answer,'Kofun Period');
+ reverse.input='Kofun Period';assert.ok(E.grade(reverse));
+});
+await test('Absent or blank additional information stays compatible with legacy cards',()=>{
+ for(const extra of [{},{additionalInfo:''}]){
+  const value=lib({},extra);assert.equal(E.validateLibrary(value),value);
+  const q=E.makeTest(value.decks[0].cards,'forward',['written'],1)[0];assert.equal(q.additionalInfo,'');
+  q.input=q.answer;assert.ok(E.grade(q));
+ }
+});
+await test('Imported additional information must be a string when supplied',()=>{
+ assert.equal(E.validateLibrary(lib({}, {additionalInfo:'Optional prompt context.'})).decks[0].cards[0].additionalInfo,'Optional prompt context.');
+ for(const additionalInfo of [null,42,false,[],{}])assert.throws(()=>E.validateLibrary(lib({}, {additionalInfo})),/additional information must be text/);
 });
 console.log(`\n${passed} passed; ${failed} failed`);
 process.exitCode=failed?1:0;
