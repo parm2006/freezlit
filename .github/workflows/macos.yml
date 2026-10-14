@@ -99,6 +99,16 @@ jobs:
           name: Freezlit-macOS
           path: dist/
           if-no-files-found: error
+      - name: Export readable native test diagnostics
+        if: always()
+        run: |
+          result=build/Freezlit-native-tests.xcresult
+          if [ -d "$result" ]; then
+            mkdir -p build/native-diagnostics build/native-attachments
+            xcrun xcresulttool get test-results summary --path "$result" > build/native-test-summary.json || true
+            xcrun xcresulttool export diagnostics --path "$result" --output-path build/native-diagnostics || true
+            xcrun xcresulttool export attachments --path "$result" --output-path build/native-attachments || true
+          fi
       - name: Upload actual native test evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -111,4 +121,7 @@ jobs:
             build/native-tests.log
             build/native-release.log
             build/universal-architectures.txt
+            build/native-test-summary.json
+            build/native-diagnostics/
+            build/native-attachments/
           if-no-files-found: warn

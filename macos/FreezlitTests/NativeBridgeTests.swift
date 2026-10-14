@@ -16,6 +16,7 @@ final class NativeBridgeTests: XCTestCase {
         let controller = StudyViewController(store: store)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 760),
                               styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
         window.contentViewController = controller
         window.makeKeyAndOrderFront(nil)
         defer { window.close(); try? FileManager.default.removeItem(at: directory) }

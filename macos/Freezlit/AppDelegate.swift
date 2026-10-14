@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1180, height: 800),
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                   backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
             window.title = "Freezlit"
             window.contentMinSize = NSSize(width: 680, height: 580)
             window.contentViewController = controller

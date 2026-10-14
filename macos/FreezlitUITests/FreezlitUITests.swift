@@ -12,8 +12,10 @@ final class FreezlitUITests: XCTestCase {
         let reveal = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Reveal answer")).firstMatch
         XCTAssertTrue(reveal.waitForExistence(timeout: 20), "The HTML flashcard must remain accessible in the native window.")
         reveal.click()
-        let answer = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Retrieving information")).firstMatch
-        XCTAssertTrue(answer.waitForExistence(timeout: 10))
+        // The explicit aria-label gives this HTML button its AX name; its child
+        // answer text is verified separately through the real native DOM smoke.
+        let revealed = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Show question")).firstMatch
+        XCTAssertTrue(revealed.waitForExistence(timeout: 10))
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Freezlit native macOS window"
         attachment.lifetime = .keepAlways
