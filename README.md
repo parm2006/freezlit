@@ -30,7 +30,7 @@ Normal typed-answer grading lowercases both answers and removes all whitespace, 
 
 ## Version 1.1
 
-Fresh installations include only the **Active Recall** starter deck. Right-click a deck in the library and choose **Delete deck** to remove it. Keyboard users can focus a deck and press **Shift+F10**. Deletion asks for confirmation and also removes that deck’s saved tests and progress. Upgrades automatically retire the unchanged Spanish starter set shipped in older versions. Its original cards and progress remain archived inside the exported library; edited Spanish decks remain visible. Other decks can be removed through the library menu.
+Fresh installations include only the **Active Recall** starter deck. Right-click a deck in the library and choose **Delete deck** to remove it. Keyboard users can focus a deck and press **Shift+F10**. Deletion asks for confirmation and also removes that deck’s saved tests and progress. Upgrades permanently remove the old stock demo and its retired archive, including its linked progress. Custom decks are preserved. Only a one-way fingerprint for recognizing the exact former stock remains; its card content is absent from the source and release. Other decks can be removed through the library menu.
 
 The interface, app window and executable use the splayed flashcard-deck icon.
 

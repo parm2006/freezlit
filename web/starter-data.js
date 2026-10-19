@@ -14,48 +14,39 @@ export function generateStarterLibrary(){
  ]}]};
 }
 
-const spanishPairs=new Map([['hola','hello'],['gracias','thank you'],['agua','water'],['libro','book'],['casa','house'],['verde','green'],['amigo','friend'],['mañana','tomorrow']]);
+// Only a one-way fingerprint remains for recognizing the removed stock deck.
+const legacyFingerprint='c3e6a456f56ec5e03378db8858ddf8ad1fe4d693150d25f15589b6d6225c3963';
 const deckFields=new Set(['id','title','description','color','cards']);
 const cardFields=new Set(['id','term','definition','notes','tags','starred','suspended','schedule','buriedUntil','termImage','definitionImage','additionalInfo']);
-const empty=v=>v===undefined||v==='';
-function isLegacySpanish(deck){
- if(!deck||typeof deck.id!=='string'||deck.title!=='A little Spanish'||deck.description!=='A small starter set for Write, Spell, and Match.'||deck.color!==undefined&&deck.color!=='clay'||!Array.isArray(deck.cards)||deck.cards.length!==8)return false;
- if(Object.keys(deck).some(key=>!deckFields.has(key)))return false;
- const terms=new Set();
+async function isLegacyStarter(deck){
+ if(!deck||typeof deck.id!=='string'||!Array.isArray(deck.cards)||deck.cards.length!==8||Object.keys(deck).some(key=>!deckFields.has(key)))return false;
  for(const card of deck.cards){
-  if(!card||spanishPairs.get(card.term)!==card.definition||terms.has(card.term))return false;
-  if(Object.keys(card).some(key=>!cardFields.has(key)))return false;
-  if(!['notes','termImage','definitionImage','additionalInfo'].every(key=>empty(card[key])))return false;
+  if(!card||Object.keys(card).some(key=>!cardFields.has(key)))return false;
+  if(['notes','termImage','definitionImage','additionalInfo'].some(key=>card[key]!==undefined&&card[key]!==''))return false;
   if(card.tags!==undefined&&(!Array.isArray(card.tags)||card.tags.length))return false;
-  terms.add(card.term);
  }
- return terms.size===8;
+ const pairs=deck.cards.map(card=>[card.term,card.definition]).sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);
+ const identity=JSON.stringify([deck.title,deck.description,deck.color===undefined?'clay':deck.color,pairs]);
+ const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(identity));
+ return [...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('')===legacyFingerprint;
 }
 
-// Pure migration: only unchanged shipped examples retire; user edits stay visible.
-// Archived snapshots remain part of the same exportable local library.
-export function removeLegacySpanishStarter(library){
+export async function removeLegacyStarter(library){
  if(!library||!Array.isArray(library.decks))return {library,changed:false};
- const legacy=library.decks.filter(isLegacySpanish);
- if(!legacy.length)return {library,changed:false};
- // Preserve an unrecognized custom archive format rather than overwriting it.
- if(library.retiredStarterDecks!==undefined&&!Array.isArray(library.retiredStarterDecks))return {library,changed:false};
+ const matches=await Promise.all(library.decks.map(isLegacyStarter));
+ const ids=new Set(library.decks.filter((_,i)=>matches[i]).map(deck=>deck.id));
+ const archives=Array.isArray(library.retiredStarterDecks)?library.retiredStarterDecks.filter(item=>item?.reason!=='legacy-spanish-starter'):null;
+ if(!ids.size&&(!archives||archives.length===library.retiredStarterDecks.length))return {library,changed:false};
  const next=structuredClone(library);
- next.retiredStarterDecks=next.retiredStarterDecks||[];
- for(const source of legacy){
-  const deck=next.decks.find(d=>d.id===source.id);
-  const history=(next.history||[]).filter(h=>h.deckId===deck.id);
-  const records=Object.fromEntries(Object.entries(next.records||{}).filter(([key])=>key.startsWith(deck.id)&&!next.decks.some(other=>other.id!==deck.id&&other.id.length>deck.id.length&&key.startsWith(other.id))));
-  const snapshot={reason:'legacy-spanish-starter',deck:structuredClone(deck),history:structuredClone(history),records:structuredClone(records)};
-  if(Object.hasOwn(next.testDrafts||{},deck.id))snapshot.testDraft=structuredClone(next.testDrafts[deck.id]);
-  if(Object.hasOwn(next.testConfigs||{},deck.id))snapshot.testConfig=structuredClone(next.testConfigs[deck.id]);
-  // Idempotent snapshots; different later progress is preserved as another recovery snapshot.
-  if(!next.retiredStarterDecks.some(saved=>JSON.stringify(saved)===JSON.stringify(snapshot)))next.retiredStarterDecks.push(snapshot);
-  next.decks=next.decks.filter(d=>d.id!==deck.id);
-  if(Array.isArray(next.history))next.history=next.history.filter(h=>h.deckId!==deck.id);
-  if(next.testDrafts)delete next.testDrafts[deck.id];
-  if(next.testConfigs)delete next.testConfigs[deck.id];
-  if(next.records)for(const key of Object.keys(records))delete next.records[key];
+ next.decks=next.decks.filter(deck=>!ids.has(deck.id));
+ if(Array.isArray(next.history))next.history=next.history.filter(entry=>!ids.has(entry.deckId));
+ for(const id of ids){
+  if(next.testDrafts)delete next.testDrafts[id];
+  if(next.testConfigs)delete next.testConfigs[id];
+  for(const key of Object.keys(next.records||{})){
+   if(key.startsWith(id)&&!library.decks.some(other=>other.id!==id&&other.id.length>id.length&&key.startsWith(other.id)))delete next.records[key];
+  }
  }
+ if(archives){if(archives.length)next.retiredStarterDecks=structuredClone(archives);else delete next.retiredStarterDecks}
  return {library:next,changed:true};
 }

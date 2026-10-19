@@ -121,3 +121,5 @@ These checks do not establish runtime behavior on Intel hardware, every macOS ve
 Browser and native diagnostics use isolated data rather than the user's library.
 
 Version 1.2 keyboard check: letters, numbers, Space, Enter and arrow keys advance after correct feedback exactly once. Wrong feedback does not advance on a letter; Tab, modifier/system shortcuts, composing input and held-key repeats retain their behavior. The native Mac diagnostic also checks normal-key advancement.
+
+Version 1.2 removes the old demo card content and fixtures from the current source. Exact old-stock recognition uses a SHA-256 fingerprint; cleanup deletes matching stock and its linked history/tests/records plus known retired demo archives. Custom content is preserved. The migration saves the cleaned library twice so the automatic previous copy is also cleaned. Earlier verification paragraphs describe historical releases.
