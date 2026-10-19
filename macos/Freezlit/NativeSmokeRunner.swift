@@ -96,7 +96,9 @@ final class NativeSmokeRunner {
         guard practiceHistory?.count == 1, practiceHistory?.first?["ok"] as? Bool == true else {
             throw SmokeFailure(label: "Native Write correction did not replace its original history result.")
         }
-        checks.append("Native Write wrong answer corrected through I was correct; one corrected history entry and one hit")
+        _ = try await call("document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'a',bubbles:true,cancelable:true}));return true;")
+        try await wait("document.querySelector('#answer') && !document.querySelector('.feedback')", "A normal key did not advance the correct native Write answer.")
+        checks.append("Native Write correction; one corrected history entry and hit; normal key advances")
 
         // Use the actual editor and file-upload handler, with an isolated synthetic PNG.
         try await click("[data-action='edit-deck']")

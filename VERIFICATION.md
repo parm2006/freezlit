@@ -119,3 +119,5 @@ These checks do not establish runtime behavior on Intel hardware, every macOS ve
 - The Mac release workflow runs the actual native app with additional checks for Write correction and accepted Test persistence. Release workflow results determine native build/runtime status.
 
 Browser and native diagnostics use isolated data rather than the user's library.
+
+Version 1.2 keyboard check: letters, numbers, Space, Enter and arrow keys advance after correct feedback exactly once. Wrong feedback does not advance on a letter; Tab, modifier/system shortcuts, composing input and held-key repeats retain their behavior. The native Mac diagnostic also checks normal-key advancement.

@@ -24,7 +24,7 @@ GitHub’s macOS runner builds both processor architectures, runs native storage
 
 Spaced review always shuffles the cards eligible for that session. Due dates, daily limits, suspended cards and buried cards still determine which cards are eligible.
 
-After a wrong practice answer, choose **I was correct** to count it as correct without adding another attempt. This updates saved history and the mode's score/progress, including Learn mastery. Submitted tests offer the same button; the original typed answer stays visible, and the corrected score survives tab changes and reopening the app.
+After a wrong practice answer, choose **I was correct** to count it as correct without adding another attempt. This updates saved history and the mode's score/progress, including Learn mastery. After a correct practice answer, press any normal key to continue (Tab, modifier keys and system shortcuts retain their usual behavior). Submitted tests offer the same button; the original typed answer stays visible, and the corrected score survives tab changes and reopening the app.
 
 Normal typed-answer grading lowercases both answers and removes all whitespace, including spaces inside words and numbers: `19 - 12` and `19-1 2` match `19-12`. Existing common-punctuation and alternative-answer handling remain. **Exact grading** still requires the same case, punctuation and internal spacing (outer spaces are ignored).
 
