@@ -82,6 +82,22 @@ final class NativeSmokeRunner {
         try await wait("document.querySelector('.study-card')?.innerText.includes('Retrieving')", "Flashcard answer did not reveal.")
         checks.append("Native flashcard reveal")
 
+        try await click("[data-mode='write']")
+        try await click("[data-action='start']")
+        try await value("#answer", "native intentional typo")
+        _ = try await call("document.querySelector('#answer-form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));return true;")
+        try await wait("document.querySelector('.feedback.failure') && document.querySelector('[data-action=\"accept-practice\"]')?.textContent==='I was correct'", "Wrong native Write answer did not offer correction.")
+        try await click("[data-action='accept-practice']")
+        try await wait("document.querySelector('.feedback.success') && document.querySelector('.session-top')?.textContent.includes('1 correct')", "Native Write correction did not count as correct.")
+        try await wait("!document.querySelector('[data-action=\"accept-practice\"]')", "Native Write correction remained available twice.")
+        try await Task.sleep(nanoseconds: 350_000_000)
+        let practiced = try await call("return await window.webkit.messageHandlers.freezlit.postMessage({action:'load'});") as? [String: Any]
+        let practiceHistory = (practiced?["history"] as? [[String: Any]])?.filter { $0["source"] as? String == "write" }
+        guard practiceHistory?.count == 1, practiceHistory?.first?["ok"] as? Bool == true else {
+            throw SmokeFailure(label: "Native Write correction did not replace its original history result.")
+        }
+        checks.append("Native Write wrong answer corrected through I was correct; one corrected history entry and one hit")
+
         // Use the actual editor and file-upload handler, with an isolated synthetic PNG.
         try await click("[data-action='edit-deck']")
         try await value("[data-draft='title']", "Active Recall · native proof")
@@ -122,12 +138,31 @@ final class NativeSmokeRunner {
         try await wait("document.querySelectorAll('.test-question').length===20", "The test was lost when switching native study tabs.")
         _ = try await call("document.querySelector('#test-form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));return true;")
         try await wait("document.querySelector('.test-score')", "The native test did not grade.")
+        let correction = try await call("""
+            const button=[...document.querySelectorAll('[data-action="accept-answer"]')].find(button=>document.querySelector(`[name="q${button.dataset.question}"]`)?.type==='text');
+            if(!button || button.textContent!=='I was correct') throw Error('Missing written test correction');
+            const index=Number(button.dataset.question),input=document.querySelector(`[name="q${index}"]`).value;
+            button.click();return {index,input};
+            """) as? [String: Any]
+        guard let correctedIndex = correction?["index"] as? Int, let originalInput = correction?["input"] as? String,
+              originalInput == "native proof answer" else {
+            throw SmokeFailure(label: "Native test correction did not target the original wrong written answer.")
+        }
+        try await wait("document.querySelectorAll('.test-question')[\(correctedIndex)]?.classList.contains('test-correct')", "Native test correction did not update grading.")
         try await Task.sleep(nanoseconds: 350_000_000)
         controller.webView.reload()
         try await wait("document.querySelector('.study-card')", "Native reload did not return to the default flashcard view.")
         try await click("[data-mode='test']")
         try await wait("document.querySelectorAll('.test-question').length===20 && document.querySelector('.test-score')", "The saved test and score were not restored after native reload.")
-        checks.append("Exact 20-question test, tab persistence, grading, and reload persistence in WKWebView")
+        try await wait("document.querySelectorAll('.test-question')[\(correctedIndex)]?.classList.contains('test-correct') && document.querySelector('[name=\"q\(correctedIndex)\"]')?.value==='native proof answer'", "Native reload lost test correction or replaced the original input.")
+        let restored = try await call("return await window.webkit.messageHandlers.freezlit.postMessage({action:'load'});") as? [String: Any]
+        let draft = (restored?["testDrafts"] as? [String: [String: Any]])?.values.first
+        let restoredQuestions = draft?["questions"] as? [[String: Any]]
+        guard restoredQuestions?[correctedIndex]["accepted"] as? Bool == true,
+              restoredQuestions?[correctedIndex]["input"] as? String == originalInput else {
+            throw SmokeFailure(label: "Native storage did not preserve accepted test grading and original input.")
+        }
+        checks.append("Exact 20-question test, tab persistence, grading, and accepted-answer reload persistence in WKWebView")
 
         controller.exportDestinationForTesting = outputDirectory.appendingPathComponent("native-export.json")
         _ = try await call("""

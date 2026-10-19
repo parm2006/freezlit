@@ -2,7 +2,7 @@ export const uid=()=>globalThis.crypto?.randomUUID?.()||Math.random().toString(3
 export const DAY=86400000;
 export const MAX_INTERVAL=36500;
 export const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
-export const normalize=s=>String(s||'').normalize('NFKC').toLocaleLowerCase().replace(/[.,!?;:]/g,'').replace(/\s+/g,' ').trim();
+export const normalize=s=>String(s||'').normalize('NFKC').toLowerCase().replace(/[.,!?;:]/g,'').replace(/\s+/g,'');
 export function correct(input,answer,strict=false){if(strict)return String(input).trim()===String(answer).trim();return String(answer).split('|').some(a=>normalize(a)===normalize(input))}
 export function face(card,direction='forward'){return direction==='reverse'?{prompt:card.definition,answer:card.term,promptImage:card.definitionImage,answerImage:card.termImage}:{prompt:card.term,answer:card.definition,promptImage:card.termImage,answerImage:card.definitionImage}}
 export function schedule(old={},rating,now=Date.now()){
@@ -46,7 +46,7 @@ export function makeTest(cards,direction,types,count){
  }
  return pool.map((card,i)=>{const f=face(card,direction);let type=types[i%types.length];if(['choice','matching'].includes(type)&&eligible.length<2)type='written';const options=shuffle([f.answer,...shuffle(eligible.filter(c=>c.id!==card.id)).map(c=>face(c,direction).answer).filter((a,j,arr)=>a!==f.answer&&arr.indexOf(a)===j).slice(0,3)]);const truth=Math.random()>.5;return {id:uid()+'-'+i,cardId:card.id,...f,additionalInfo:card.additionalInfo||'',type,options,statement:truth?f.answer:options.find(a=>a!==f.answer)||f.answer,truth:truth||options.length===1,input:'',graded:false}})
 }
-export function grade(q,strict=false){if(q.type==='tf')return q.input===String(q.truth);if(q.type==='choice'||q.type==='matching')return q.input===q.answer;return correct(q.input,q.answer,strict)}
+export function grade(q,strict=false){if(q.accepted===true)return true;if(q.type==='tf')return q.input===String(q.truth);if(q.type==='choice'||q.type==='matching')return q.input===q.answer;return correct(q.input,q.answer,strict)}
 export function parseDelimited(text,delimiter='\t'){
  const rows=[];let row=[],field='',quoted=false;const s=text.replace(/^\uFEFF/,'');
  for(let i=0;i<s.length;i++){const ch=s[i];if(ch==='"'){if(quoted&&s[i+1]==='"'){field+='"';i++}else quoted=!quoted}else if(ch===delimiter&&!quoted){row.push(field);field=''}else if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&s[i+1]==='\n')i++;row.push(field);if(row.some(x=>x.trim()))rows.push(row);row=[];field=''}else field+=ch}

@@ -52,6 +52,26 @@ await test('Typed answers support alternates, whitespace, Unicode and strict cas
  assert.ok(E.correct('  HELLO! ','hello|bonjour'));assert.ok(E.correct('Ａ','a'));
  assert.equal(E.correct('hello','Hello',true),false);assert.equal(E.correct('unrelated','hello'),false);
 });
+await test('Lenient grading removes all whitespace and lowercases both answers',()=>{
+ for(const input of ['19 - 12','        19-1 2','19\t-\n12','１９ - １２'])assert.ok(E.correct(input,'19-12'));
+ assert.ok(E.correct('NeW\n Yo Rk','new york'));
+ assert.ok(E.correct(' NEW YORK ','NYC | New York'));
+ assert.equal(E.correct('19-13','19-12'),false);
+ assert.equal(E.correct('19 - 12','19-12',true),false);
+ assert.equal(E.correct('Hello','hello',true),false);
+ assert.ok(E.correct(' 19-12 ','19-12',true));
+});
+await test('Accepted test answers preserve the typed input and grade in strict mode',()=>{
+ for(const type of ['written','choice','matching','tf']){
+  const q={type,answer:'correct',truth:true,input:'typo'};
+  assert.equal(E.grade(q,true),false);
+  q.accepted=true;
+  assert.equal(E.grade(q,true),true);
+  assert.equal(q.input,'typo');
+  assert.equal(E.grade(JSON.parse(JSON.stringify(q)),true),true);
+ }
+ assert.equal(E.grade({type:'written',answer:'correct',input:'typo',accepted:'true'}),false);
+});
 await test('Tests grade choice, true/false, matching and written answers',()=>{
  assert.ok(E.grade({type:'tf',truth:false,input:'false'}));assert.equal(E.grade({type:'tf',truth:true,input:''}),false);
  for(const type of ['choice','matching','written'])assert.ok(E.grade({type,answer:'Answer',input:'Answer'}));

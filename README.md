@@ -4,7 +4,7 @@ A free Windows and Mac study app that keeps your cards, images, and progress on 
 
 ## Windows install
 
-Download **Freezlit-Windows-v1.1.zip** from [Releases](https://github.com/parm2006/freezlit/releases), extract it, then run **Install Freezlit.cmd**. It installs for your Windows user and adds Desktop and Start Menu shortcuts. No administrator access is needed. You can also run **Freezlit.exe** directly from the extracted folder.
+Download **Freezlit-Windows-v1.2.zip** from [Releases](https://github.com/parm2006/freezlit/releases), extract it, then run **Install Freezlit.cmd**. It installs for your Windows user and adds Desktop and Start Menu shortcuts. No administrator access is needed. You can also run **Freezlit.exe** directly from the extracted folder.
 
 **Python is bundled in Freezlit.exe; no Python or pip installation is needed to use the release.** Windows 10/11, 64-bit, with Microsoft Edge WebView2 Runtime is required. Most Windows installations already have it. If the app reports it missing, install the [Microsoft WebView2 Evergreen Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/). The executable is unsigned; Windows may show a reputation warning.
 
@@ -19,6 +19,14 @@ The native Mac app embeds the study interface and uses macOS files, save dialogs
 ## Mac verification
 
 GitHub’s macOS runner builds both processor architectures, runs native storage/bridge tests and the actual application, and captures test results and screenshots. The release uses the [successful cloud build](https://github.com/parm2006/freezlit/actions/runs/38609075619): eight native tests passed on ARM64 macOS 15.7.9, followed by checks in the running release app. Intel was compiled and checked for its executable slice, but was not run on an Intel Mac. These checks establish behavior on the tested cloud Mac, rather than on every Mac model. Build source and commands are documented in [macos/README.md](macos/README.md). iOS shares the JavaScript study logic in principle but is not included in this Mac release.
+
+## Version 1.2
+
+Spaced review always shuffles the cards eligible for that session. Due dates, daily limits, suspended cards and buried cards still determine which cards are eligible.
+
+After a wrong practice answer, choose **I was correct** to count it as correct without adding another attempt. This updates saved history and the mode's score/progress, including Learn mastery. Submitted tests offer the same button; the original typed answer stays visible, and the corrected score survives tab changes and reopening the app.
+
+Normal typed-answer grading lowercases both answers and removes all whitespace, including spaces inside words and numbers: `19 - 12` and `19-1 2` match `19-12`. Existing common-punctuation and alternative-answer handling remain. **Exact grading** still requires the same case, punctuation and internal spacing (outer spaces are ignored).
 
 ## Version 1.1
 
@@ -43,7 +51,7 @@ The editor's **Additional info (optional)** field adds readable prompt context i
 
 To make a deck, use the **+** beside Your library. Images can be added independently to either side. In the editor, the cloze tool generates cards from a passage such as `The {{mitochondria}} produce {{ATP}}.` The image occlusion tool lets you drag a rectangle over a diagram label and type its answer.
 
-**Answer with** selects definitions/backs or terms/fronts across every mode. **Starred only** narrows practice. Grading ignores case, common punctuation, and repeated spaces unless **Exact grading** is enabled. Put alternate textual answers between `|`, for example `USA | United States`. Tests require a textual answer; image-only answers work in flashcards, review, and self-rated practice.
+**Answer with** selects definitions/backs or terms/fronts across every mode. **Starred only** narrows practice. Grading ignores case, common punctuation, and all whitespace unless **Exact grading** is enabled. Put alternate textual answers between `|`, for example `USA | United States`. Tests require a textual answer; image-only answers work in flashcards, review, and self-rated practice.
 
 ## Your data
 

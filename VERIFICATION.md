@@ -107,3 +107,15 @@ All browser deletion checks used isolated test data.
 - The corrected frozen Windows executable matches all seven current web assets; startup, legacy Spanish retirement with archived progress, preservation of edited decks, Unicode/images, icon and ZIP checks passed. Python remains bundled; WebView2 is a Windows system prerequisite.
 
 These checks do not establish runtime behavior on Intel hardware, every macOS version, or a physical Mac owned by the user. The app is not Developer ID signed or notarized.
+
+## Version 1.2 checks
+
+- 61 shared JavaScript tests pass (35 engine, 10 starter, 16 storage), including all-whitespace/case normalization, strict grading, and accepted test answers preserving original input.
+- Nine Windows server tests pass.
+- Isolated desktop browser checks use a fixed random source to verify shuffled review order, no repeated review cards, daily new-card limits and normal schedule updates.
+- Wrong-answer overrides are checked in Write, Spell, Blocks, Charms and Falling words: a single attempt and history entry becomes correct, with mode progress updated. Learn preserves mastery earned before the typo; a last-life Falling words answer can be corrected before ending the round.
+- Normal grading accepts `19-1 2` for `19-12`; Exact grading rejects a changed internal space.
+- Test correction preserves the original typed answer, corrects the existing saved history entry, and persists the corrected score across tabs and reloads.
+- The Mac release workflow runs the actual native app with additional checks for Write correction and accepted Test persistence. Release workflow results determine native build/runtime status.
+
+Browser and native diagnostics use isolated data rather than the user's library.
