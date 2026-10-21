@@ -79,7 +79,7 @@ final class NativeSmokeRunner {
         checks.append("Actual native app boot; one eight-card Active Recall default deck; native local save")
         try await screenshot("macos-desktop.png")
         try await click("[data-action='flip']")
-        try await wait("document.querySelector('.study-card')?.innerText.includes('Retrieving')", "Flashcard answer did not reveal.")
+        try await wait("document.querySelector('.study-card.revealed')?.getAttribute('aria-label')==='Show question'", "Flashcard answer did not reveal.")
         checks.append("Native flashcard reveal")
 
         try await click("[data-mode='write']")
