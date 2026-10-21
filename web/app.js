@@ -112,7 +112,7 @@ function startTest(){
 function rememberTest(){
  if(mode!=='test'||!session?.questions)return;
  data.testDrafts=data.testDrafts||{};data.testDrafts[selected]=structuredClone(session);
- clearTimeout(testSaveTimer);testSaveTimer=null;save();
+ save();
 }
 function restoreTest(){
  const draft=data.testDrafts?.[selected];

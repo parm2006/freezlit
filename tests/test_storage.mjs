@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {isNativeApp,readLibrary,writeLibrary,exportLibrary,speakText,stopSpeech,encodeLibrary,decodeLibrary,createSaveCoordinator,StorageConflict} from '../web/storage.js';
 
 let passed=0,failed=0;
@@ -10,6 +11,13 @@ async function test(name,run){
 }
 const library={version:1,decks:[{id:'deck',title:'日本史',cards:[{id:'card',term:'Kofun Period',definition:'300-538',additionalInfo:'Burial mounds.'}]}],history:[],records:{}};
 const image='data:image/png;base64,iVBORw0KGgo=';
+await test('Test persistence saves one independent snapshot without stale timer references',()=>{
+ const source=readFileSync(new URL('../web/app.js',import.meta.url),'utf8');
+ const remember=source.match(/function rememberTest\(\)\{[\s\S]*?\n\}/)[0];
+ const data={},session={questions:[{input:'original'}],submitted:true};let saves=0;
+ new Function('data','session','save',`const mode='test',selected='deck';${remember};rememberTest();`)(data,session,()=>saves++);
+ assert.equal(saves,1);assert.deepEqual(data.testDrafts.deck,session);session.questions[0].input='changed';assert.equal(data.testDrafts.deck.questions[0].input,'original');
+});
 function bridge(handler){globalThis.window={webkit:{messageHandlers:{freezlit:{postMessage:handler}}}}}
 function forbidFetch(){globalThis.fetch=()=>{throw Error('Native calls must not use the localhost fetch service')}}
 
