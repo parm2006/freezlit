@@ -84,7 +84,7 @@ final class StudyViewController: NSViewController, WKNavigationDelegate, WKUIDel
                     DispatchQueue.main.async { reply(["ok": true, "revision": revision], nil) }
                 } catch LibraryError.conflict {
                     DispatchQueue.main.async { reply(["ok": false, "code": "conflict", "error": LibraryError.conflict.localizedDescription], nil) }
-                } catch { DispatchQueue.main.async { reply(["ok": false, "error": error.localizedDescription], nil) } }
+                } catch { DispatchQueue.main.async { reply(nil, error.localizedDescription) } }
             }
         case "export":
             guard let library = body["library"] else { reply(nil, "A library is required."); return }
