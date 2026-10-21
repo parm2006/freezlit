@@ -117,8 +117,11 @@ final class NativeSmokeRunner {
         try await wait("document.querySelector('h1')?.textContent==='Active Recall · native proof'", "Native deck edit did not save.")
         let edited = try await call("return (await window.webkit.messageHandlers.freezlit.postMessage({action:'load'})).library;") as? [String: Any]
         let cards = (edited?["decks"] as? [[String: Any]])?.first?["cards"] as? [[String: Any]]
+        let imageReference = cards?.first?["termImage"] as? [String: Any]
+        let mediaId = imageReference?["mediaId"] as? String
+        let media = edited?["media"] as? [String: String]
         guard cards?.first?["additionalInfo"] as? String == "Extra context stays outside the required answer.",
-              (cards?.first?["termImage"] as? String)?.hasPrefix("data:image/png;base64,") == true else {
+              mediaId.flatMap({ media?[$0] })?.hasPrefix("data:image/png;base64,") == true else {
             throw SmokeFailure(label: "Additional information or image was not persisted by native storage.")
         }
         checks.append("Native editor image attachment and additional-information persistence")
