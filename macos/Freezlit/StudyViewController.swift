@@ -137,13 +137,14 @@ final class StudyViewController: NSViewController, WKNavigationDelegate, WKUIDel
     /// Wait for the page's debounced edits, drafts, and test answers before native close/quit.
     func flushPendingWork(completion: @escaping (Bool) -> Void) {
         guard isViewLoaded, webView != nil else { completion(true); return }
-        webView.callAsyncJavaScript(
-            "return window.freezlitFlushPendingWork ? await window.freezlitFlushPendingWork() : true",
-            arguments: [:], in: nil, contentWorld: .page
-        ) { result in
-            if case .success(let value) = result, (value as? Bool) == true {
-                completion(true)
-            } else {
+        Task { @MainActor in
+            do {
+                let result = try await webView.callAsyncJavaScript(
+                    "return window.freezlitFlushPendingWork ? await window.freezlitFlushPendingWork() : true",
+                    arguments: [:], in: nil, contentWorld: .page
+                )
+                completion((result as? Bool) == true)
+            } catch {
                 completion(false)
             }
         }
