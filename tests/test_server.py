@@ -36,6 +36,14 @@ class RuntimeTests(unittest.TestCase):
         connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=3)
         request_headers = {"Origin": f"http://127.0.0.1:{self.port}", "Content-Type": "application/json"}
         request_headers.update(headers or {})
+        omit_revision = request_headers.pop("Omit-If-Match", False)
+        if method == "PUT" and "If-Match" not in request_headers and not omit_revision:
+            probe = http.client.HTTPConnection("127.0.0.1", self.port, timeout=3)
+            probe.request("GET", "/api/library", headers={"Host": f"127.0.0.1:{self.port}"})
+            response = probe.getresponse()
+            request_headers["If-Match"] = response.getheader("ETag")
+            response.read()
+            probe.close()
         body = json.dumps(value) if value is not None else None
         connection.request(method, path, body, request_headers)
         response = connection.getresponse()
@@ -56,6 +64,23 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(self.request("PUT", value=second)[0], 200)
         self.assertEqual(json.loads((self.folder / "library.previous.json").read_text(encoding="utf-8")), first)
         self.assertEqual(json.loads(self.request()[1]), second)
+
+    def test_revision_prevents_stale_window_overwrite(self):
+        status, _, headers = self.request()
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["ETag"], '"empty"')
+        first = {"version": 1, "decks": [{"id": "x", "cards": []}]}
+        status, _, saved = self.request("PUT", value=first, headers={"If-Match": headers["ETag"]})
+        self.assertEqual(status, 200)
+        stale = self.request("PUT", value={"version": 1, "decks": []}, headers={"If-Match": headers["ETag"]})
+        self.assertEqual(stale[0], 409)
+        self.assertEqual(json.loads(self.request()[1]), first)
+        self.assertNotEqual(saved["ETag"], headers["ETag"])
+
+    def test_put_requires_a_valid_revision(self):
+        self.assertEqual(self.request("PUT", value={"version": 1, "decks": []}, headers={"Omit-If-Match": True})[0], 428)
+        self.assertEqual(self.request("PUT", value={"version": 1, "decks": []}, headers={"If-Match": "*"})[0], 400)
+        self.assertFalse((self.folder / "library.json").exists())
 
     def test_invalid_schema_keeps_previous_data(self):
         library = {"decks": []}

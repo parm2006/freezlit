@@ -4,7 +4,7 @@ A free Windows and Mac study app that keeps your cards, images, and progress on 
 
 ## Windows install
 
-Download **Freezlit-Windows-v1.2.zip** from [Releases](https://github.com/parm2006/freezlit/releases), extract it, then run **Install Freezlit.cmd**. It installs for your Windows user and adds Desktop and Start Menu shortcuts. No administrator access is needed. You can also run **Freezlit.exe** directly from the extracted folder.
+Download **Freezlit-Windows-v1.3.zip** from [Releases](https://github.com/parm2006/freezlit/releases), extract it, then run **Install Freezlit.cmd**. It installs for your Windows user and adds Desktop and Start Menu shortcuts. No administrator access is needed. You can also run **Freezlit.exe** directly from the extracted folder.
 
 **Python is bundled in Freezlit.exe; no Python or pip installation is needed to use the release.** Windows 10/11, 64-bit, with Microsoft Edge WebView2 Runtime is required. Most Windows installations already have it. If the app reports it missing, install the [Microsoft WebView2 Evergreen Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/). The executable is unsigned; Windows may show a reputation warning.
 
@@ -20,7 +20,9 @@ The native Mac app embeds the study interface and uses macOS files, save dialogs
 
 GitHub’s macOS runner builds both processor architectures, runs native storage/bridge tests and the actual application, and captures test results and screenshots. The release uses the [successful cloud build](https://github.com/parm2006/freezlit/actions/runs/38609075619): eight native tests passed on ARM64 macOS 15.7.9, followed by checks in the running release app. Intel was compiled and checked for its executable slice, but was not run on an Intel Mac. These checks establish behavior on the tested cloud Mac, rather than on every Mac model. Build source and commands are documented in [macos/README.md](macos/README.md). iOS shares the JavaScript study logic in principle but is not included in this Mac release.
 
-## Version 1.2
+## Version 1.3
+
+This update protects large and repeated images during saves, batches changes safely, and detects edits from another open window instead of overwriting them. Tests save their answers and resume when you switch study modes; editor drafts, including incomplete cards, recover from the library screen. Saving an edited deck preserves its review progress. Mac close and quit wait for pending saves, and backups can be exported even when they exceed the normal library limit.
 
 Spaced review always shuffles the cards eligible for that session. Due dates, daily limits, suspended cards and buried cards still determine which cards are eligible.
 

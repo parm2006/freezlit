@@ -68,23 +68,28 @@ final class StudyViewController: NSViewController, WKNavigationDelegate, WKUIDel
         case "load":
             storageQueue.async { [store] in
                 do {
-                    let loaded = try store.load()
-                    let result: Any = loaded.map { $0 as Any } ?? NSNull()
+                    let snapshot = try store.loadSnapshot()
+                    let library: Any = snapshot.library.map { $0 as Any } ?? NSNull()
+                    let result: Any = ["library": library, "revision": snapshot.revision]
                     DispatchQueue.main.async { reply(result, nil) }
                 } catch { DispatchQueue.main.async { reply(nil, error.localizedDescription) } }
             }
         case "save":
-            guard let library = body["library"] else { reply(nil, "A library is required."); return }
+            guard let library = body["library"], let expectedRevision = body["expectedRevision"] as? String else {
+                reply(nil, "A library and storage revision are required."); return
+            }
             storageQueue.async { [store] in
                 do {
-                    try store.save(library)
-                    DispatchQueue.main.async { reply(["ok": true], nil) }
-                } catch { DispatchQueue.main.async { reply(nil, error.localizedDescription) } }
+                    let revision = try store.save(library, expectedRevision: expectedRevision)
+                    DispatchQueue.main.async { reply(["ok": true, "revision": revision], nil) }
+                } catch LibraryError.conflict {
+                    DispatchQueue.main.async { reply(["ok": false, "code": "conflict", "error": LibraryError.conflict.localizedDescription], nil) }
+                } catch { DispatchQueue.main.async { reply(["ok": false, "error": error.localizedDescription], nil) } }
             }
         case "export":
             guard let library = body["library"] else { reply(nil, "A library is required."); return }
             do {
-                let data = try store.encode(library)
+                let data = try store.encode(library, enforceLimit: false)
                 export(data, name: body["name"] as? String ?? "freezlit-library.json", reply: reply)
             } catch { reply(nil, error.localizedDescription) }
         case "speak":
@@ -126,6 +131,21 @@ final class StudyViewController: NSViewController, WKNavigationDelegate, WKUIDel
             }
             do { try store.writePrivate(data, to: url); reply(["ok": true], nil) }
             catch { reply(nil, error.localizedDescription) }
+        }
+    }
+
+    /// Wait for the page's debounced edits, drafts, and test answers before native close/quit.
+    func flushPendingWork(completion: @escaping (Bool) -> Void) {
+        guard isViewLoaded, webView != nil else { completion(true); return }
+        webView.callAsyncJavaScript(
+            "return window.freezlitFlushPendingWork ? await window.freezlitFlushPendingWork() : true",
+            arguments: [:], in: nil, contentWorld: .page
+        ) { result in
+            if case .success(let value) = result, (value as? Bool) == true {
+                completion(true)
+            } else {
+                completion(false)
+            }
         }
     }
 

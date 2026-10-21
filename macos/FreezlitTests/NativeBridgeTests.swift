@@ -30,30 +30,33 @@ final class NativeBridgeTests: XCTestCase {
         }
         XCTAssertTrue(ready, "The real bundled WKWebView did not boot.")
         let initial = try await call(controller.webView, "return await window.webkit.messageHandlers.freezlit.postMessage({action:'load'});") as? [String: Any]
-        let decks = try XCTUnwrap(initial?["decks"] as? [[String: Any]])
+        let loadedLibrary = try XCTUnwrap(initial?["library"] as? [String: Any])
+        let initialRevision = try XCTUnwrap(initial?["revision"] as? String)
+        let decks = try XCTUnwrap(loadedLibrary["decks"] as? [[String: Any]])
         XCTAssertEqual(decks.count, 1)
         XCTAssertEqual(decks.first?["title"] as? String, "Active Recall")
         XCTAssertEqual((decks.first?["cards"] as? [Any])?.count, 8)
         let result = try await call(controller.webView, """
             const handler=window.webkit.messageHandlers.freezlit;
-            const value=await handler.postMessage({action:'load'});
+            const snapshot=await handler.postMessage({action:'load'}), value=snapshot.library;
             value.decks[0].title='Native bridge saved café';
-            const saved=await handler.postMessage({action:'save',library:value});
+            const saved=await handler.postMessage({action:'save',library:value,expectedRevision:snapshot.revision});
             const loaded=await handler.postMessage({action:'load'});
-            return {ok:saved.ok,title:loaded.decks[0].title};
+            return {ok:saved.ok,title:loaded.library.decks[0].title};
             """) as? [String: Any]
         XCTAssertEqual(result?["ok"] as? Bool, true)
         XCTAssertEqual(result?["title"] as? String, "Native bridge saved café")
         XCTAssertTrue(FileManager.default.fileExists(atPath: store.previousURL.path))
         let rejected = try await call(controller.webView, """
-            try { await window.webkit.messageHandlers.freezlit.postMessage({action:'save',library:{bad:true}});return false; }
+            try { await window.webkit.messageHandlers.freezlit.postMessage({action:'save',library:{bad:true},expectedRevision:'\(initialRevision)'});return false; }
             catch(error) { return true; }
             """) as? Bool
         XCTAssertEqual(rejected, true)
         controller.exportDestinationForTesting = directory.appendingPathComponent("export.json")
         let exported = try await call(controller.webView, """
             const handler=window.webkit.messageHandlers.freezlit;
-            return await handler.postMessage({action:'export',library:await handler.postMessage({action:'load'}),name:'backup.json'});
+            const snapshot=await handler.postMessage({action:'load'});
+            return await handler.postMessage({action:'export',library:snapshot.library,name:'backup.json'});
             """) as? [String: Any]
         XCTAssertEqual(exported?["ok"] as? Bool, true)
         XCTAssertEqual(try Data(contentsOf: directory.appendingPathComponent("export.json")),

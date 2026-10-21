@@ -14,6 +14,11 @@ await test('Again returns in a minute and increments lapse after review',()=>{
  const old={state:'review',reps:5,lapses:0,interval:10,ease:2.5};const next=E.schedule(old,1,now);
  assert.equal(next.due,now+60000);assert.equal(next.state,'learning');assert.equal(next.lapses,1);assert.equal(old.lapses,0);
 });
+await test('Easy graduation clears a stale learning step before the next Good',()=>{
+ const again=E.schedule({state:'review',reps:4,lapses:0,interval:4,ease:2.5,step:0},1,now);
+ const easy=E.schedule(again,4,again.due);const good=E.schedule(easy,3,easy.due);
+ assert.equal(easy.state,'review');assert.equal(easy.step,undefined);assert.equal(good.state,'review');assert.equal(good.interval,10);
+});
 await test('Review success lengthens interval; ease has a floor',()=>{
  assert.equal(E.schedule({state:'review',interval:10,ease:2.5},3,now).interval,25);
  assert.equal(E.schedule({ease:1.3},1,now).ease,1.3);assert.throws(()=>E.schedule({},0,now));
@@ -61,6 +66,15 @@ await test('Lenient grading removes all whitespace and lowercases both answers',
  assert.equal(E.correct('Hello','hello',true),false);
  assert.ok(E.correct(' 19-12 ','19-12',true));
 });
+await test('Lenient grading preserves punctuation that changes numbers',()=>{
+ assert.equal(E.correct('19 - 12','        19-1 2'),true);
+ assert.equal(E.correct('1.5','15'),false);assert.equal(E.correct('1.23','12.3'),false);assert.equal(E.correct('5!','5'),false);
+ assert.equal(E.correct('PARIS,  France','paris france'),true);
+});
+await test('Strict grading accepts each trimmed written alternative',()=>{
+ assert.equal(E.correct('United States',' USA | United States ',true),true);
+ assert.equal(E.correct('united states','USA | United States',true),false);
+});
 await test('Accepted test answers preserve the typed input and grade in strict mode',()=>{
  for(const type of ['written','choice','matching','tf']){
   const q={type,answer:'correct',truth:true,input:'typo'};
@@ -102,6 +116,7 @@ await test('Quoted CSV handles escaped quote, embedded comma/newline and BOM',()
  assert.throws(()=>E.parseDelimited('"unfinished,answer',','));
 });
 await test('TSV handles empty fields and skips blank records',()=>assert.deepEqual(E.parseDelimited('a\tb\r\n\r\nx\t\ty'),[['a','b'],['x','','y']]));
+await test('TSV preserves quotes inside unquoted fields',()=>assert.deepEqual(E.parseDelimited('Say "hello"\tgreeting','\t'),[['Say "hello"','greeting']]));
 await test('Library rejects duplicates, empty content, external/SVG images',()=>{
  assert.throws(()=>E.validateLibrary(lib({}, {term:' '})));
  assert.throws(()=>E.validateLibrary(lib({}, {termImage:'https://example.test/image.png'})));
@@ -114,6 +129,10 @@ await test('Library accepts real app review state and formatted personal bests',
  assert.equal(E.validateLibrary(value),value);
 });
 await test('Library rejects malformed embedded image base64',()=>assert.throws(()=>E.validateLibrary(lib({}, {termImage:'data:image/png;base64,%%%invalid%%%'}))));
+await test('Library validates large embedded images without recursive regex overflow',()=>{
+ const image='data:image/png;base64,'+'A'.repeat(8_000_000);
+ assert.equal(E.validateLibrary(lib({}, {termImage:image})).decks[0].cards[0].termImage.length,image.length);
+});
 await test('Library rejects malformed history before queue can crash',()=>assert.throws(()=>E.validateLibrary(lib({history:'not an array'}))));
 await test('Library rejects invalid limits and corrupt scheduling state',()=>{
  assert.throws(()=>E.validateLibrary(lib({settings:{newLimit:-4,reviewLimit:'oops'}})));

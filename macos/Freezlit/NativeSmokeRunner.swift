@@ -70,7 +70,7 @@ final class NativeSmokeRunner {
 
     private func verify() async throws {
         try await wait("document.querySelector('.study-card')", "The bundled study page did not boot.")
-        let initial = try await call("return await window.webkit.messageHandlers.freezlit.postMessage({action:'load'});") as? [String: Any]
+        let initial = try await call("return (await window.webkit.messageHandlers.freezlit.postMessage({action:'load'})).library;") as? [String: Any]
         guard let decks = initial?["decks"] as? [[String: Any]], decks.count == 1,
               decks.first?["title"] as? String == "Active Recall",
               (decks.first?["cards"] as? [Any])?.count == 8 else {
@@ -91,7 +91,7 @@ final class NativeSmokeRunner {
         try await wait("document.querySelector('.feedback.success') && document.querySelector('.session-top')?.textContent.includes('1 correct')", "Native Write correction did not count as correct.")
         try await wait("!document.querySelector('[data-action=\"accept-practice\"]')", "Native Write correction remained available twice.")
         try await Task.sleep(nanoseconds: 350_000_000)
-        let practiced = try await call("return await window.webkit.messageHandlers.freezlit.postMessage({action:'load'});") as? [String: Any]
+        let practiced = try await call("return (await window.webkit.messageHandlers.freezlit.postMessage({action:'load'})).library;") as? [String: Any]
         let practiceHistory = (practiced?["history"] as? [[String: Any]])?.filter { $0["source"] as? String == "write" }
         guard practiceHistory?.count == 1, practiceHistory?.first?["ok"] as? Bool == true else {
             throw SmokeFailure(label: "Native Write correction did not replace its original history result.")
@@ -115,7 +115,7 @@ final class NativeSmokeRunner {
         try await wait("document.querySelector('#editor-cards img')", "Native image input did not attach an image.")
         try await click("[data-action='save-deck']")
         try await wait("document.querySelector('h1')?.textContent==='Active Recall · native proof'", "Native deck edit did not save.")
-        let edited = try await call("return await window.webkit.messageHandlers.freezlit.postMessage({action:'load'});") as? [String: Any]
+        let edited = try await call("return (await window.webkit.messageHandlers.freezlit.postMessage({action:'load'})).library;") as? [String: Any]
         let cards = (edited?["decks"] as? [[String: Any]])?.first?["cards"] as? [[String: Any]]
         guard cards?.first?["additionalInfo"] as? String == "Extra context stays outside the required answer.",
               (cards?.first?["termImage"] as? String)?.hasPrefix("data:image/png;base64,") == true else {
@@ -157,7 +157,7 @@ final class NativeSmokeRunner {
         try await click("[data-mode='test']")
         try await wait("document.querySelectorAll('.test-question').length===20 && document.querySelector('.test-score')", "The saved test and score were not restored after native reload.")
         try await wait("document.querySelectorAll('.test-question')[\(correctedIndex)]?.classList.contains('test-correct') && document.querySelector('[name=\"q\(correctedIndex)\"]')?.value==='native proof answer'", "Native reload lost test correction or replaced the original input.")
-        let restored = try await call("return await window.webkit.messageHandlers.freezlit.postMessage({action:'load'});") as? [String: Any]
+        let restored = try await call("return (await window.webkit.messageHandlers.freezlit.postMessage({action:'load'})).library;") as? [String: Any]
         let draft = (restored?["testDrafts"] as? [String: [String: Any]])?.values.first
         let restoredQuestions = draft?["questions"] as? [[String: Any]]
         guard restoredQuestions?[correctedIndex]["accepted"] as? Bool == true,
@@ -169,7 +169,7 @@ final class NativeSmokeRunner {
         controller.exportDestinationForTesting = outputDirectory.appendingPathComponent("native-export.json")
         _ = try await call("""
             const bridge=window.webkit.messageHandlers.freezlit;
-            const library=await bridge.postMessage({action:'load'});
+            const library=(await bridge.postMessage({action:'load'})).library;
             return await bridge.postMessage({action:'export',library,name:'proof.json'});
             """)
         let exported = try Data(contentsOf: outputDirectory.appendingPathComponent("native-export.json"))

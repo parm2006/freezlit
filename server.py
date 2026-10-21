@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
+import hashlib
+import hmac
 import json
 import os
 from pathlib import Path
@@ -15,6 +18,36 @@ import mimetypes
 
 MAX_BYTES = 100 * 1024 * 1024
 STORE_LOCK = threading.Lock()
+
+
+@contextmanager
+def store_lock(folder: Path):
+    """Serialize threads and app processes that share the same data directory."""
+    folder.mkdir(parents=True, exist_ok=True)
+    with STORE_LOCK, (folder / ".library.lock").open("a+b") as lock:
+        if os.name == "nt":
+            import msvcrt
+            lock.seek(0, os.SEEK_END)
+            if lock.tell() == 0:
+                lock.write(b"\0")
+                lock.flush()
+            lock.seek(0)
+            msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                lock.seek(0)
+                msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
+
+def revision(data: bytes | None) -> str:
+    return '"' + (hashlib.sha256(data).hexdigest() if data is not None else "empty") + '"'
 
 
 def data_directory() -> Path:
@@ -53,13 +86,25 @@ def read_library(folder: Path):
     return validate_library(json.loads(path.read_text(encoding="utf-8")))
 
 
-def write_library(folder: Path, value):
+def read_snapshot(folder: Path):
+    path = folder / "library.json"
+    if not path.exists():
+        return None, revision(None)
+    data = path.read_bytes()
+    return validate_library(json.loads(data.decode("utf-8"))), revision(data)
+
+
+def write_library(folder: Path, value, expected_revision=None):
     validate_library(value)
     encoded = json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode("utf-8")
     if len(encoded) > MAX_BYTES:
         raise ValueError("Library exceeds the 100 MB storage limit.")
     folder.mkdir(parents=True, exist_ok=True)
     destination = folder / "library.json"
+    current = destination.read_bytes() if destination.exists() else None
+    current_revision = revision(current)
+    if expected_revision is not None and not hmac.compare_digest(expected_revision, current_revision):
+        raise FileExistsError("This library changed in another window. Export your changes before reloading.")
     temporary = None
     backup_temporary = None
     try:
@@ -96,7 +141,7 @@ class FreezlitHandler(BaseHTTPRequestHandler):
         # URLs and study text are private; log only errors, without request payloads.
         pass
 
-    def respond(self, status, body, content_type="application/json; charset=utf-8"):
+    def respond(self, status, body, content_type="application/json; charset=utf-8", headers=None):
         if isinstance(body, dict) or body is None:
             body = json.dumps(body).encode("utf-8")
         self.send_response(status)
@@ -107,6 +152,8 @@ class FreezlitHandler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Cross-Origin-Resource-Policy", "same-origin")
         self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
@@ -135,9 +182,9 @@ class FreezlitHandler(BaseHTTPRequestHandler):
         route = urlsplit(self.path).path
         if route == "/api/library":
             try:
-                with STORE_LOCK:
-                    value = read_library(self.server.data_folder)
-                self.respond(200, value)
+                with store_lock(self.server.data_folder):
+                    value, etag = read_snapshot(self.server.data_folder)
+                self.respond(200, value, headers={"ETag": etag})
             except (OSError, ValueError, RecursionError):
                 self.error(500, "Library could not be read. Your stored file has been preserved; check library.previous.json for recovery.")
             return
@@ -163,6 +210,13 @@ class FreezlitHandler(BaseHTTPRequestHandler):
         if urlsplit(self.path).path != "/api/library":
             self.error(404, "Unknown API endpoint.")
             return
+        expected_revision = self.headers.get("If-Match")
+        if expected_revision is None:
+            self.error(428, "A current library revision is required. Reload before saving.")
+            return
+        if expected_revision != '"empty"' and not (expected_revision.startswith('"') and expected_revision.endswith('"') and len(expected_revision) == 66 and all(c in "0123456789abcdef" for c in expected_revision[1:-1])):
+            self.error(400, "Invalid library revision.")
+            return
         if self.headers.get_content_type() != "application/json":
             self.error(415, "Expected application/json.")
             return
@@ -184,9 +238,12 @@ class FreezlitHandler(BaseHTTPRequestHandler):
             if len(raw) != length:
                 raise ValueError("Incomplete request body.")
             value = json.loads(raw.decode("utf-8"), parse_constant=lambda _: (_ for _ in ()).throw(ValueError("Invalid JSON number.")))
-            with STORE_LOCK:
-                write_library(self.server.data_folder, value)
-            self.respond(200, {"ok": True})
+            with store_lock(self.server.data_folder):
+                write_library(self.server.data_folder, value, expected_revision)
+                etag = revision((self.server.data_folder / "library.json").read_bytes())
+            self.respond(200, {"ok": True}, headers={"ETag": etag})
+        except FileExistsError as exc:
+            self.error(409, str(exc))
         except (ValueError, UnicodeError, RecursionError) as exc:
             self.error(400, str(exc) if isinstance(exc, ValueError) else "Invalid JSON library.")
         except (OSError, TimeoutError):

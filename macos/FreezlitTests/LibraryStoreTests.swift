@@ -49,6 +49,23 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: smallStore.libraryURL.path))
     }
 
+    func testRevisionRejectsStaleWindowWrite() throws {
+        let first = library("first")
+        let revision = try store.save(first, expectedRevision: "empty")
+        XCTAssertThrowsError(try store.save(library("stale"), expectedRevision: "empty"))
+        let snapshot = try store.loadSnapshot()
+        XCTAssertEqual(snapshot.revision, revision)
+        let decks = snapshot.library?["decks"] as? [[String: Any]]
+        XCTAssertEqual(decks?.first?["title"] as? String, "Native test")
+    }
+
+    func testExportEncodingCanExceedStorageLimit() throws {
+        let smallStore = try LibraryStore(directory: directory, maxBytes: 128)
+        let value = library(String(repeating: "x", count: 200))
+        XCTAssertThrowsError(try smallStore.encode(value))
+        XCTAssertNoThrow(try smallStore.encode(value, enforceLimit: false))
+    }
+
     func testCorruptLibraryIsNotReplaced() throws {
         let corrupt = Data("not JSON".utf8)
         try corrupt.write(to: store.libraryURL)

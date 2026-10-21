@@ -1,8 +1,10 @@
 import AppKit
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var window: NSWindow?
     private var smokeRunner: NativeSmokeRunner?
+    private var closeApproved = false
+    private var terminationCheckInProgress = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hosted unit tests construct their own windows and isolated libraries.
@@ -19,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.title = "Freezlit"
             window.contentMinSize = NSSize(width: 680, height: 580)
             window.contentViewController = controller
+            window.delegate = self
             window.center()
             window.makeKeyAndOrderFront(nil)
             self.window = window
@@ -43,6 +46,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         NSClassFromString("XCTestCase") == nil
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if closeApproved { closeApproved = false; return true }
+        guard let controller = sender.contentViewController as? StudyViewController else { return true }
+        controller.flushPendingWork { [weak self, weak sender] saved in
+            guard let self, let sender else { return }
+            if saved {
+                self.closeApproved = true
+                sender.performClose(nil)
+            } else {
+                self.showSaveFailure()
+            }
+        }
+        return false
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if terminationCheckInProgress { return .terminateCancel }
+        terminationCheckInProgress = true
+        guard let controller = window?.contentViewController as? StudyViewController else {
+            terminationCheckInProgress = false
+            return .terminateNow
+        }
+        controller.flushPendingWork { [weak self] saved in
+            guard let self else { sender.reply(toApplicationShouldTerminate: false); return }
+            self.terminationCheckInProgress = false
+            if saved {
+                sender.reply(toApplicationShouldTerminate: true)
+            } else {
+                self.showSaveFailure()
+                sender.reply(toApplicationShouldTerminate: false)
+            }
+        }
+        return .terminateLater
+    }
+
+    private func showSaveFailure() {
+        let alert = NSAlert()
+        alert.messageText = "Freezlit could not save your latest changes"
+        alert.informativeText = "Keep the app open, use Retry local save, or export a backup before closing."
+        alert.addButton(withTitle: "Keep Freezlit Open")
+        if let window {
+            alert.beginSheetModal(for: window) { _ in }
+        } else {
+            alert.runModal()
+        }
     }
 
     private func installMenu() {
