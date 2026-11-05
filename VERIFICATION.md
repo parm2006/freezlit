@@ -123,3 +123,15 @@ Browser and native diagnostics use isolated data rather than the user's library.
 Version 1.2 keyboard check: letters, numbers, Space, Enter and arrow keys advance after correct feedback exactly once. Wrong feedback does not advance on a letter; Tab, modifier/system shortcuts, composing input and held-key repeats retain their behavior. The native Mac diagnostic also checks normal-key advancement.
 
 Version 1.2 removes the old demo card content and fixtures from the current source. Exact old-stock recognition uses a SHA-256 fingerprint; cleanup deletes matching stock and its linked history/tests/records plus known retired demo archives. Custom content is preserved. The migration saves the cleaned library twice so the automatic previous copy is also cleaned. Earlier verification paragraphs describe historical releases.
+
+## 2026-11-05 — isolated incremental storage and thumbnail verification
+
+Implemented in `codex/freezlitclone`, independently of the installed application and live data. Tests used generated screenshots and a synthetic 60-card Japanese Periods fixture.
+
+- `npm test`: 42 engine + 10 starter-data + 29 storage tests passed.
+- Python discovery: 22 tests passed, covering legacy/v2 migration, original and preview files, draft/previous-state retention, cleanup grace, stale writers, missing references, close-save handling and existing HTTP safety.
+- Headless Microsoft Edge: browser scenarios passed for five-second continuous-typing saves, pause and field-exit flushes, idle no-op, thumbnails, full-resolution preview, flashcard thumbnail clicks, clipboard PNG paste, upload, single-deck export and reimport with five original images, draft recovery, one-sided cards, empty-new-card filtering, Back, reload and narrow layout. No page errors; no long tasks over 50 ms during the synthetic typing segment. After the initial recovery snapshot, typing-save requests measured 655–689 bytes.
+- `FreezlitClone.exe`: PyInstaller build passed; packaged local-service smoke test verified retained legacy JSON, original SHA-256, WebP thumbnail delivery, a 338-byte changed-card save, matching packaged assets, and restart persistence.
+- Desktop interactive smoke test was limited by a computer-use app-launch approval timeout. Native spelling popup and immediate close after a real OS clipboard paste remain manual checks; they are not claimed as verified.
+
+Proof files are retained under `build/clone-verification/`. Temporary clone data and its executable are disposable test artifacts, not production backups. No production build or live-library migration was performed. The user's approval is still required before rebuilding/installing the main app.

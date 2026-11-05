@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "test": "node tests/test_engine.mjs && node tests/test_starter_data.mjs && node tests/test_storage.mjs",
-    "native:web": "node scripts/build-native-web.mjs"
+    "native:web": "node scripts/build-native-web.mjs",
+    "test:ui": "node scripts/test-clone-ui.mjs"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "playwright-core": "^1.64.1"
   }
 }

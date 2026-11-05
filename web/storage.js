@@ -1,9 +1,12 @@
+import {flattenLibrary,diffRecords} from './storage-delta.js';
+import {prepareImages,portableLibrary} from './media.js';
 // The same study UI uses a native Mac bridge or the Windows localhost service.
 import {validImage} from './engine.js';
 function bridge(){return globalThis.window?.webkit?.messageHandlers?.freezlit}
 export function isNativeApp(){return typeof bridge()?.postMessage==='function'}
 async function native(action,payload={}){return await bridge().postMessage({action,...payload})}
 let revision;
+let savedRecords=new Map();
 const imageFields=['termImage','definitionImage','promptImage','answerImage'];
 function visitImages(library,visit){
  const cards=deck=>{for(const card of deck?.cards||[])for(const field of imageFields.slice(0,2))if(card[field])visit(card,field)};
@@ -57,26 +60,27 @@ export function decodeLibrary(library){
 export class StorageConflict extends Error {constructor(){super('This library changed in another window. Export your changes before reloading.');this.name='StorageConflict';this.code='conflict'}}
 export async function readLibrary(){
  if(isNativeApp()){const result=await native('load');if(result&&Object.hasOwn(result,'library')){revision=result.revision;return decodeLibrary(result.library)}revision=undefined;return decodeLibrary(result)}
- const r=await fetch('/api/library');if(!r.ok)throw Error('Cannot read your saved library.');const result=await r.json();revision=r.headers?.get('ETag')??undefined;return decodeLibrary(result);
+ const r=await fetch('/api/state');if(!r.ok)throw Error('Cannot read your saved library.');const result=await r.json();revision=r.headers?.get('ETag')??'0';const decoded=decodeLibrary(result);savedRecords=flattenLibrary(decoded);return decoded;
 }
 export async function writeLibrary(library){
- const encoded=encodeLibrary(library);
- if(isNativeApp()){const result=await native('save',{library:encoded,expectedRevision:revision??'empty'});if(result?.code==='conflict')throw new StorageConflict();if(result?.ok===false)throw Error(result.error||'Cannot save your library.');revision=result?.revision;return}
- const headers={'Content-Type':'application/json','If-Match':revision??'"empty"'};
- const r=await fetch('/api/library',{method:'PUT',headers,body:JSON.stringify(encoded)});
+ if(isNativeApp()){const encoded=encodeLibrary(library);const result=await native('save',{library:encoded,expectedRevision:revision??'empty'});if(result?.code==='conflict')throw new StorageConflict();if(result?.ok===false)throw Error(result.error||'Cannot save your library.');revision=result?.revision;return}
+ await prepareImages(library);
+ const records=flattenLibrary(library),changes=diffRecords(savedRecords,records);
+ if(!changes.set.length&&!changes.remove.length)return;
+ const r=await fetch('/api/state',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':revision??'0'},body:JSON.stringify(changes)});
  if(r.status===409)throw new StorageConflict();
  if(!r.ok){let message='Storage unavailable';try{message=(await r.json()).error||message}catch{}throw Error(message)}
- revision=r.headers?.get('ETag')??undefined;
+ revision=r.headers?.get('ETag')??revision;savedRecords=records;
 }
 export async function exportLibrary(library,name){
- const encoded=encodeLibrary(library);
+ const encoded=encodeLibrary(await portableLibrary(library));
  if(isNativeApp())return await native('export',{library:encoded,name});
  const blob=new Blob([JSON.stringify(encoded)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
  a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 // snapshot is called only when a write starts, not on every keystroke.
-export function createSaveCoordinator({snapshot,write=writeLibrary,onState=()=>{},delay=300}){
- let generation=0,saved=0,timer=null,inFlight=null,error=null;
+export function createSaveCoordinator({snapshot,write=writeLibrary,onState=()=>{},delay=800,maxWait=5000}){
+ let generation=0,saved=0,timer=null,maxTimer=null,inFlight=null,error=null;
  const state=()=>({dirty:generation!==saved,pending:!!timer||!!inFlight,error});
  const emit=()=>onState(state());
  function start(){
@@ -85,11 +89,11 @@ export function createSaveCoordinator({snapshot,write=writeLibrary,onState=()=>{
   inFlight=Promise.resolve().then(()=>write(snapshot())).then(()=>{saved=target;error=null;return true},failure=>{error=failure;return false}).finally(()=>{inFlight=null;emit()});emit();return inFlight;
  }
  async function flush(){
-  clearTimeout(timer);timer=null;
+  clearTimeout(timer);timer=null;clearTimeout(maxTimer);maxTimer=null;
   while(saved!==generation||inFlight){if(!await start())return false;clearTimeout(timer);timer=null}
   emit();return true;
  }
- function request(){generation++;error=null;clearTimeout(timer);timer=setTimeout(()=>{timer=null;void flush()},delay);emit()}
+ function request(){generation++;error=null;clearTimeout(timer);timer=setTimeout(()=>{timer=null;void flush()},delay);if(!maxTimer)maxTimer=setTimeout(()=>{maxTimer=null;void flush()},maxWait);emit()}
  return {request,flush,get state(){return state()}};
 }
 export async function speakText(text,language='en-US'){

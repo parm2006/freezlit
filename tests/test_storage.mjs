@@ -1,3 +1,5 @@
+import {storeImage} from '../web/media.js';
+import {flattenLibrary,diffRecords} from '../web/storage-delta.js';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {isNativeApp,readLibrary,writeLibrary,exportLibrary,speakText,stopSpeech,encodeLibrary,decodeLibrary,createSaveCoordinator,StorageConflict,IncompatibleLibrary} from '../web/storage.js';
@@ -48,6 +50,33 @@ await test('Typed test answers snapshot text without copying image payloads',()=
  session.questions[0].input='next';assert.equal(data.testDrafts.deck.questions[0].input,'answer');assert.equal(data.testDrafts.deck.questions[0].promptImage,image);assert.equal(requests,1);
 });
 
+await test('A text edit sends only its changed card and no image bytes',()=>{
+ const before=structuredClone(library);before.decks[0].cards[0].termImage='/api/media/'+'a'.repeat(64);
+ const saved=flattenLibrary(before);before.decks[0].cards[0].term='Edited';const after=flattenLibrary(before),patch=diffRecords(saved,after);
+ assert.equal(patch.set.length,1);assert.equal(JSON.parse(patch.set[0][0])[0],'deckCard');assert.deepEqual(patch.remove,[]);assert.ok(!JSON.stringify(patch).includes('base64'));
+ assert.deepEqual(diffRecords(after,flattenLibrary(before)),{set:[],remove:[]});
+});
+
+await test('Continuous typing schedules one five-second deadline while resetting the pause timer',async()=>{
+ const timers=[];globalThis.setTimeout=(fn,ms)=>{const timer={fn,ms};timers.push(timer);return timer};
+ let writes=0;const coordinator=createSaveCoordinator({snapshot:()=>library,write:async()=>{writes++}});
+ coordinator.request();coordinator.request();coordinator.request();
+ assert.equal(timers.filter(t=>t.ms===5000).length,1);assert.equal(timers.filter(t=>t.ms===800).length,3);
+ timers.find(t=>t.ms===5000).fn();await coordinator.flush();assert.equal(writes,1);assert.equal(coordinator.state.dirty,false);
+});
+
+await test('Pasted image uploads binary directly without fetching a data URL',async()=>{
+ globalThis.window={};let calls=0;
+ const pointer='/api/media/'+'a'.repeat(64);
+ globalThis.fetch=async(url,options)=>{calls++;assert.equal(url,'/api/media');assert.equal(options.method,'PUT');assert.equal(options.body.type,'image/png');assert.equal(Buffer.from(await options.body.arrayBuffer()).toString('base64'),image.split(',')[1]);return {ok:true,json:async()=>({image:pointer})}};
+ assert.equal(await storeImage(image),pointer);assert.equal(calls,1);assert.equal(await storeImage(pointer),pointer);assert.equal(calls,1);
+});
+
+await test('Incremental reads reject future deck formats before touching their cards',async()=>{
+ globalThis.window={};globalThis.fetch=async()=>({ok:true,json:async()=>({version:1,decks:[{title:'Future deck',deckFormatVersion:2,cards:{unknown:true}}]})});
+ await assert.rejects(readLibrary(),IncompatibleLibrary);
+});
+
 await test('Native detection tolerates missing window and incomplete bridges',()=>{
  delete globalThis.window;assert.equal(isNativeApp(),false);assert.doesNotThrow(()=>stopSpeech());
  for(const window of [{},{webkit:{}},{webkit:{messageHandlers:{freezlit:{postMessage:true}}}}]){globalThis.window=window;assert.equal(isNativeApp(),false)}
@@ -84,8 +113,8 @@ await test('Native save includes the complete library',async()=>{
  assert.equal(await writeLibrary(library),undefined);assert.equal(decodeLibrary(message.library).decks[0].id,library.decks[0].id);assert.equal(message.library.version,2);assert.equal(message.action,'save');
 });
 await test('Native failed save surfaces the backend error and fallback message',async()=>{
- bridge(()=>Promise.resolve({ok:false,error:'Disk is full'}));await assert.rejects(writeLibrary(library),/Disk is full/);
- bridge(()=>Promise.resolve({ok:false}));await assert.rejects(writeLibrary(library),/Cannot save your library/);
+ bridge(()=>Promise.resolve({ok:false,error:'Disk is full'}));await assert.rejects(writeLibrary({...library,decks:[{...library.decks[0],title:'Changed title'}]}),/Disk is full/);
+ bridge(()=>Promise.resolve({ok:false}));await assert.rejects(writeLibrary({...library,decks:[{...library.decks[0],title:'Changed title'}]}),/Cannot save your library/);
 });
 await test('Native export includes name/library and supports cancellation results',async()=>{
  let message;const cancelled={cancelled:true};bridge(value=>{message=value;return Promise.resolve(cancelled)});forbidFetch();
@@ -105,16 +134,16 @@ await test('Native load/save/export/speak promise failures propagate to the call
  bridge(value=>Promise.reject(Error('bridge '+value.action+' failed')));
  for(const [action,run] of [['load',()=>readLibrary()],['save',()=>writeLibrary(library)],['export',()=>exportLibrary(library,'test.json')],['speak',()=>speakText('test')]])await assert.rejects(run(),new RegExp('bridge '+action+' failed'));
 });
-await test('Windows reads /api/library by GET and preserves library/null responses',async()=>{
+await test('Windows reads /api/state by GET and preserves library/null responses',async()=>{
  globalThis.window={};const requests=[];let response=library;
  globalThis.fetch=async(...args)=>{requests.push(args);return {ok:true,json:async()=>response}};
  assert.equal(await readLibrary(),library);response=null;assert.equal(await readLibrary(),null);
- assert.deepEqual(requests,[['/api/library'],['/api/library']]);
+ assert.deepEqual(requests,[['/api/state'],['/api/state']]);
 });
 await test('Windows saves valid UTF-8 JSON with PUT and content type',async()=>{
  delete globalThis.window;let request;
  globalThis.fetch=async(url,options)=>{request={url,options};return {ok:true}};
- await writeLibrary(library);assert.equal(request.url,'/api/library');assert.equal(request.options.method,'PUT');assert.equal(request.options.headers['Content-Type'],'application/json');assert.equal(JSON.parse(request.options.body).version,2);assert.deepEqual(decodeLibrary(JSON.parse(request.options.body)),library);
+ await writeLibrary(library);assert.equal(request.url,'/api/state');assert.equal(request.options.method,'PUT');assert.equal(request.options.headers['Content-Type'],'application/json');const patch=JSON.parse(request.options.body);assert.ok(patch.set.some(([key,value])=>key.includes('deckCard')&&value.term==='Kofun Period'));assert.deepEqual(patch.remove,[]);
 });
 await test('Windows read errors and invalid JSON propagate without returning empty data',async()=>{
  globalThis.window={};globalThis.fetch=async()=>({ok:false,json:async()=>({error:'backend unavailable'})});await assert.rejects(readLibrary(),/Cannot read your saved library/);
@@ -122,9 +151,9 @@ await test('Windows read errors and invalid JSON propagate without returning emp
  globalThis.fetch=async()=>{throw Error('Connection lost')};await assert.rejects(readLibrary(),/Connection lost/);
 });
 await test('Windows save surfaces backend errors and non-JSON failure fallback',async()=>{
- globalThis.window={};globalThis.fetch=async()=>({ok:false,json:async()=>({error:'Permission denied'})});await assert.rejects(writeLibrary(library),/Permission denied/);
- globalThis.fetch=async()=>({ok:false,json:async()=>{throw Error('HTML response')}});await assert.rejects(writeLibrary(library),/Storage unavailable/);
- globalThis.fetch=async()=>{throw Error('Connection lost')};await assert.rejects(writeLibrary(library),/Connection lost/);
+ globalThis.window={};globalThis.fetch=async()=>({ok:false,json:async()=>({error:'Permission denied'})});await assert.rejects(writeLibrary({...library,decks:[{...library.decks[0],title:'Changed title'}]}),/Permission denied/);
+ globalThis.fetch=async()=>({ok:false,json:async()=>{throw Error('HTML response')}});await assert.rejects(writeLibrary({...library,decks:[{...library.decks[0],title:'Changed title'}]}),/Storage unavailable/);
+ globalThis.fetch=async()=>{throw Error('Connection lost')};await assert.rejects(writeLibrary({...library,decks:[{...library.decks[0],title:'Changed title'}]}),/Connection lost/);
 });
 await test('Browser export downloads complete JSON and revokes the temporary URL',async()=>{
  globalThis.window={};let savedBlob,anchor,scheduled;

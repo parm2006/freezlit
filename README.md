@@ -53,7 +53,7 @@ To make a deck, use the **+** beside Your library. Images can be added independe
 
 ## Your data
 
-Saved under `%LOCALAPPDATA%\Freezlit\library.json`, with `library.previous.json` retained after each successful update. Images are embedded in the library. Export a full backup before moving computers or uninstalling. JSON imports add decks and preserve existing cards. Imported copies of existing deck IDs receive new IDs.
+The Windows source edition saves under `%LOCALAPPDATA%\Freezlit`: `library.sqlite3` holds changed records, `images/` holds originals, and `thumbnails/` holds compressed previews. Existing JSON libraries are migrated safely while their original file is retained; the previous committed state is retained in SQLite. Older installed releases continue using their existing JSON storage until rebuilt and updated. See [STORAGE.md](STORAGE.md) for migration, backup and recovery details. Export a full backup before moving computers or uninstalling. JSON imports add decks and preserve existing cards. Imported copies of existing deck IDs receive new IDs.
 
 The Windows application binds only to your computer's loopback interface and checks request origins. The native Mac app uses a local file bridge and blocks outbound navigation. Both use atomic file replacement. No telemetry, accounts, external fonts, or hosted content. System speech voices may depend on internet connectivity. Total library limit: 100 MB; each uploaded image: 8 MB.
 

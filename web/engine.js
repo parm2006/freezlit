@@ -1,3 +1,4 @@
+import {isImagePointer} from './media.js';
 export const uid=()=>globalThis.crypto?.randomUUID?.()||Math.random().toString(36).slice(2)+Date.now();
 export const DAY=86400000;
 export const MAX_INTERVAL=36500;
@@ -6,6 +7,7 @@ export const normalize=s=>String(s||'').normalize('NFKC').toLowerCase().replace(
 export function correct(input,answer,strict=false){return String(answer).split('|').some(a=>strict?String(input).trim()===a.trim():normalize(a)===normalize(input))}
 export function face(card,direction='forward'){return direction==='reverse'?{prompt:card.definition,answer:card.term,promptImage:card.definitionImage,answerImage:card.termImage}:{prompt:card.term,answer:card.definition,promptImage:card.termImage,answerImage:card.definitionImage}}
 export function validImage(value){
+ if(isImagePointer(value))return true;
  if(typeof value!=='string'||value.length>16*1024*1024)return false;
  const comma=value.indexOf(',');if(!['data:image/png;base64','data:image/jpeg;base64','data:image/webp;base64','data:image/gif;base64'].includes(value.slice(0,comma)))return false;
  const body=value.slice(comma+1);if(!body.length||body.length%4)return false;

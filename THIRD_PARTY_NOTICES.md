@@ -27,3 +27,5 @@ Upstream projects:
 - clr_loader: https://github.com/pythonnet/clr-loader
 - PyInstaller: https://github.com/pyinstaller/pyinstaller
 - WebView2: https://developer.microsoft.com/microsoft-edge/webview2/
+
+Image thumbnails use Pillow 12.3.0 (MIT-CMU license); its license is preserved in third-party-licenses/Pillow-LICENSE.txt. Upstream: https://python-pillow.org/. Playwright is a development-only browser-test dependency (Apache-2.0), not part of the desktop executable.

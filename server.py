@@ -1,4 +1,4 @@
-"""Freezlit's private, local-only storage and web server. Python 3.10+, no dependencies."""
+"""Freezlit's private, local-only storage and web server. Python 3.10+; Pillow generates image previews."""
 from __future__ import annotations
 
 import argparse
@@ -12,9 +12,13 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
+import sqlite3
 import mimetypes
+import re
+from media_store import IncrementalStore, store_image, image_file
 
 MAX_BYTES = 100 * 1024 * 1024
 STORE_LOCK = threading.Lock()
@@ -186,7 +190,8 @@ class FreezlitHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
+        if not headers or "Cache-Control" not in headers:
+            self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Cross-Origin-Resource-Policy", "same-origin")
@@ -219,6 +224,33 @@ class FreezlitHandler(BaseHTTPRequestHandler):
         if not self.allowed():
             return
         route = urlsplit(self.path).path
+        if route == "/api/state":
+            try:
+                with store_lock(self.server.data_folder):
+                    store = IncrementalStore(self.server.data_folder)
+                    value, etag = store.load()
+                    if value is None and etag == '0':
+                        legacy, _ = read_snapshot(self.server.data_folder)
+                        if legacy is not None:
+                            value, etag = store.load(legacy)
+                    store.collect()
+                self.respond(200, value, headers={"ETag": etag})
+            except (OSError, ValueError, RecursionError, sqlite3.Error) as exc:
+                self.error(500, str(exc))
+            return
+        match = re.fullmatch(r"/api/(media|thumb)/([a-f0-9]{64})", route)
+        if match:
+            try:
+                kind, digest = match.groups()
+                if kind == 'media':
+                    path, mime = image_file(self.server.data_folder, digest)
+                else:
+                    path = self.server.data_folder / 'thumbnails' / (digest + '.webp')
+                    mime = 'image/webp'
+                self.respond(200, path.read_bytes(), mime, headers={"Cache-Control":"private, max-age=31536000, immutable"})
+            except (ValueError, OSError):
+                self.error(404, 'Image not found.')
+            return
         if route == "/api/library":
             try:
                 if self.server.migrate_legacy:
@@ -248,7 +280,11 @@ class FreezlitHandler(BaseHTTPRequestHandler):
     def do_PUT(self):
         if not self.allowed(require_origin=True):
             return
-        if urlsplit(self.path).path != "/api/library":
+        route = urlsplit(self.path).path
+        if route in ('/api/state','/api/media'):
+            self.put_incremental(route)
+            return
+        if route != "/api/library":
             self.error(404, "Unknown API endpoint.")
             return
         expected_revision = self.headers.get("If-Match")
@@ -290,6 +326,39 @@ class FreezlitHandler(BaseHTTPRequestHandler):
         except (OSError, TimeoutError):
             self.error(500, "Library could not be saved. Your previous file has been preserved.")
 
+    def put_incremental(self, route):
+        lengths = self.headers.get_all('Content-Length', [])
+        try:
+            if self.headers.get('Transfer-Encoding') or len(lengths) != 1:
+                raise ValueError('A single Content-Length is required.')
+            length = int(lengths[0])
+            limit = 16*1024*1024 if route == '/api/media' else MAX_BYTES
+            if not 0 < length <= limit:
+                raise ValueError('Request exceeds the storage limit.')
+            self.connection.settimeout(30)
+            body = self.rfile.read(length)
+            if len(body) != length:
+                raise ValueError('Incomplete request.')
+            with store_lock(self.server.data_folder):
+                if route == '/api/media':
+                    result = {'image':store_image(self.server.data_folder,body)}
+                    etag = None
+                else:
+                    expected = self.headers.get('If-Match')
+                    if expected is None:
+                        self.error(428, 'A current revision is required.')
+                        return
+                    patch = json.loads(body.decode('utf-8'), parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Invalid number.')))
+                    etag = IncrementalStore(self.server.data_folder).patch(patch, expected)
+                    result = {'ok':True}
+            self.respond(200,result,headers={'ETag':etag} if etag is not None else None)
+        except FileExistsError as exc:
+            self.error(409,str(exc))
+        except (ValueError, UnicodeError, TypeError, KeyError, RecursionError) as exc:
+            self.error(400,str(exc))
+        except (OSError, TimeoutError, sqlite3.Error):
+            self.error(500,'Changes could not be saved. The previous data has been preserved.')
+
 
 def enable_spelling_menu(window):
     """Restore WebView2's spelling/edit menu without enabling debug mode."""
@@ -301,12 +370,68 @@ def enable_spelling_menu(window):
     window.native.Invoke(Action(configure))
 
 
+class CloseGuard:
+    """Keep the native window open until pending edits and images are durable."""
+    def __init__(self):
+        self._allowed = False
+        self._pending = False
+        self._window = None
+        self._started = 0
+        self._failed = False
+
+    def finish_close(self, ok):
+        self._pending = False
+        self._failed = ok is not True
+        if ok is True and self._window is not None:
+            self._allowed = True
+            self._window.destroy()
+
+    def closing(self, window):
+        if self._allowed:
+            return True
+        if self._failed or self._pending and time.monotonic()-self._started > 10:
+            self._allowed = bool(window.create_confirmation_dialog('Changes are not saved', 'Saving did not finish. Close anyway? Edits since the last successful save may be lost.'))
+            self._pending = False
+            self._failed = False
+            return self._allowed
+        if self._pending:
+            return False
+        self._pending = True
+        self._started = time.monotonic()
+        self._window = window
+        def flush_and_close():
+            try:
+                # run_js avoids eval, so the strict content security policy stays intact.
+                window.run_js("""(() => {
+                  const flush = () => Promise.resolve(window.freezlitFlushPendingWork ? window.freezlitFlushPendingWork() : true)
+                    .then(ok => window.pywebview.api.finish_close(ok === true))
+                    .catch(() => window.pywebview.api.finish_close(false));
+                  if (window.pywebview?.api) flush();
+                  else window.addEventListener('pywebviewready', flush, {once:true});
+                })()""")
+            except Exception:
+                self._pending = False
+                self._failed = True
+
+        threading.Thread(target=flush_and_close, daemon=True).start()
+        return False
+
+
+class CloseAPI:
+    def __init__(self, guard):
+        self._guard = guard
+
+    def finish_close(self, ok):
+        self._guard.finish_close(ok)
+
+
 def main():
+    clone = Path(sys.executable).stem.lower() == 'freezlitclone' or os.environ.get('FREEZLIT_CLONE') == '1'
     parser = argparse.ArgumentParser(description="Run Freezlit locally; all study data stays on this computer.")
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--port", type=int, default=0 if clone else 8765)
     parser.add_argument("--no-browser", action="store_true", help="Run only the local server, for testing.")
     args = parser.parse_args()
-    if not 1 <= args.port <= 65535:
+    if not (clone and args.port == 0) and not 1 <= args.port <= 65535:
         parser.error("Port must be between 1 and 65535.")
     try:
         server = FreezlitServer(args.port)
@@ -319,6 +444,10 @@ def main():
             print(message, file=sys.stderr)
         return 1
     url = f"http://127.0.0.1:{server.server_port}"
+    if clone:
+        # Clone binaries never open or migrate the production data folder.
+        server.data_folder = Path(os.environ.get('FREEZLIT_CLONE_DATA_DIR', str(Path(sys.executable).resolve().parent/'clone-data'))).resolve()
+        server.migrate_legacy = False
     if not args.no_browser:
         try:
             import webview
@@ -332,7 +461,9 @@ def main():
             # pywebview defaults to blocking Blob downloads. Its Windows handler
             # prompts with a native SaveFileDialog before writing exported JSON.
             webview.settings["ALLOW_DOWNLOADS"] = True
-            window = webview.create_window("Freezlit", url, width=1180, height=800, min_size=(760, 600), background_color="#F6F5F1")
+            close_guard = CloseGuard()
+            window = webview.create_window("FreezlitClone" if clone else "Freezlit", url, width=1180, height=800, js_api=CloseAPI(close_guard), min_size=(760, 600), background_color="#F6F5F1")
+            window.events.closing += close_guard.closing
             if sys.platform == "win32":
                 window.events.loaded += enable_spelling_menu
             icon_path = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) / "assets" / "freezlit.ico"

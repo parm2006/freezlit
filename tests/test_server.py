@@ -32,6 +32,34 @@ class SpellingMenuTests(unittest.TestCase):
         self.assertFalse(settings.AreDevToolsEnabled)
 
 
+class CloseGuardTests(unittest.TestCase):
+    def test_close_waits_for_successful_flush_and_failure_keeps_window_open(self):
+        guard = module.CloseGuard()
+        calls = []
+        window = SimpleNamespace(run_js=lambda script:calls.append(script), destroy=lambda:calls.append('destroy'), create_confirmation_dialog=lambda title,message:False)
+        with patch.object(module.threading, 'Thread') as worker:
+            worker.side_effect=lambda target,daemon:SimpleNamespace(start=target)
+            self.assertFalse(guard.closing(window))
+            self.assertFalse(guard.closing(window))
+        self.assertEqual(len(calls),1)
+        guard.finish_close(False)
+        self.assertNotIn('destroy',calls)
+        self.assertFalse(guard.closing(window)) # Cancel the failed-save close warning.
+        with patch.object(module.threading, 'Thread') as worker:
+            worker.side_effect=lambda target,daemon:SimpleNamespace(start=target)
+            self.assertFalse(guard.closing(window))
+        guard.finish_close(True)
+        self.assertEqual(calls[-1],'destroy')
+        self.assertTrue(guard.closing(window))
+
+    def test_unresponsive_renderer_does_not_trap_the_window(self):
+        guard=module.CloseGuard();guard._pending=True;guard._started=0
+        window=SimpleNamespace(create_confirmation_dialog=lambda title,message:True)
+        with patch.object(module.time,'monotonic',return_value=11):
+            self.assertTrue(guard.closing(window))
+
+
+
 class RuntimeTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
