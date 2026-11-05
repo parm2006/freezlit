@@ -77,6 +77,23 @@ await test('Incremental reads reject future deck formats before touching their c
  await assert.rejects(readLibrary(),IncompatibleLibrary);
 });
 
+await test('A lost save response retries the same operation before saving newer typing',async()=>{
+ globalThis.window={};let revision=1,loseResponse=true;const requests=[],receipts=new Map();
+ globalThis.fetch=async(url,options)=>{
+  if(!options)return {ok:true,headers:{get:()=>String(revision)},json:async()=>structuredClone(library)};
+  const body=JSON.parse(options.body);requests.push({body,revision:options.headers['If-Match']});
+  if(receipts.has(body.requestId))return {ok:true,json:async()=>({revision:receipts.get(body.requestId)})};
+  assert.equal(options.headers['If-Match'],String(revision));revision++;receipts.set(body.requestId,String(revision));
+  if(loseResponse){loseResponse=false;throw Error('Save response connection lost')}
+  return {ok:true,json:async()=>({revision:String(revision)})};
+ };
+ await readLibrary();const edited=structuredClone(library);edited.decks[0].cards[0].term='First edit';
+ await assert.rejects(writeLibrary(edited),/connection lost/);edited.decks[0].cards[0].term='Newer edit';await writeLibrary(edited);
+ assert.equal(requests.length,3);assert.deepEqual(requests[0],requests[1]);assert.notEqual(requests[1].body.requestId,requests[2].body.requestId);
+ assert.equal(requests[2].revision,'2');assert.ok(requests[2].body.set.some(([key,value])=>value.term==='Newer edit'));
+ await writeLibrary(edited);assert.equal(requests.length,3);assert.equal(revision,3);
+});
+
 await test('Native detection tolerates missing window and incomplete bridges',()=>{
  delete globalThis.window;assert.equal(isNativeApp(),false);assert.doesNotThrow(()=>stopSpeech());
  for(const window of [{},{webkit:{}},{webkit:{messageHandlers:{freezlit:{postMessage:true}}}}]){globalThis.window=window;assert.equal(isNativeApp(),false)}

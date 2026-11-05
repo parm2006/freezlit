@@ -1,12 +1,12 @@
 import {flattenLibrary,diffRecords} from './storage-delta.js';
 import {prepareImages,portableLibrary} from './media.js';
 // The same study UI uses a native Mac bridge or the Windows localhost service.
-import {validImage} from './engine.js';
+import {validImage,uid} from './engine.js';
 function bridge(){return globalThis.window?.webkit?.messageHandlers?.freezlit}
 export function isNativeApp(){return typeof bridge()?.postMessage==='function'}
 async function native(action,payload={}){return await bridge().postMessage({action,...payload})}
 let revision;
-let savedRecords=new Map();
+let savedRecords=new Map(),pendingSave=null;
 const imageFields=['termImage','definitionImage','promptImage','answerImage'];
 function visitImages(library,visit){
  const cards=deck=>{for(const card of deck?.cards||[])for(const field of imageFields.slice(0,2))if(card[field])visit(card,field)};
@@ -57,20 +57,31 @@ export function decodeLibrary(library){
  visitImages(decoded,(object,field)=>{const ref=object[field];if(!ref||typeof ref!=='object'||Object.keys(ref).length!==1||typeof ref.mediaId!=='string'||!Object.hasOwn(library.media,ref.mediaId))throw Error('Missing or invalid image reference.');object[field]=library.media[ref.mediaId]});
  decoded.version=1;delete decoded.media;return decoded;
 }
-export class StorageConflict extends Error {constructor(){super('This library changed in another window. Export your changes before reloading.');this.name='StorageConflict';this.code='conflict'}}
+export class StorageConflict extends Error {constructor(){super('This save is based on an older library version. Your edits are still in this window; export a backup before reloading.');this.name='StorageConflict';this.code='conflict'}}
 export async function readLibrary(){
  if(isNativeApp()){const result=await native('load');if(result&&Object.hasOwn(result,'library')){revision=result.revision;return decodeLibrary(result.library)}revision=undefined;return decodeLibrary(result)}
- const r=await fetch('/api/state');if(!r.ok)throw Error('Cannot read your saved library.');const result=await r.json();revision=r.headers?.get('ETag')??'0';const decoded=decodeLibrary(result);savedRecords=flattenLibrary(decoded);return decoded;
+ const r=await fetch('/api/state');if(!r.ok)throw Error('Cannot read your saved library.');const result=await r.json();revision=r.headers?.get('ETag')??'0';const decoded=decodeLibrary(result);savedRecords=flattenLibrary(decoded);pendingSave=null;return decoded;
 }
 export async function writeLibrary(library){
  if(isNativeApp()){const encoded=encodeLibrary(library);const result=await native('save',{library:encoded,expectedRevision:revision??'empty'});if(result?.code==='conflict')throw new StorageConflict();if(result?.ok===false)throw Error(result.error||'Cannot save your library.');revision=result?.revision;return}
+ // Retry the exact previous operation before accepting newer edits: its response may have been lost after commit.
+ if(pendingSave)await confirmPendingSave();
  await prepareImages(library);
  const records=flattenLibrary(library),changes=diffRecords(savedRecords,records);
  if(!changes.set.length&&!changes.remove.length)return;
- const r=await fetch('/api/state',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':revision??'0'},body:JSON.stringify(changes)});
+ pendingSave={records,revision:revision??'0',body:JSON.stringify({...changes,requestId:uid()})};
+ await confirmPendingSave();
+}
+async function confirmPendingSave(){
+ const pending=pendingSave;
+ const r=await fetch('/api/state',{method:'PUT',headers:{'Content-Type':'application/json','If-Match':pending.revision},body:pending.body});
  if(r.status===409)throw new StorageConflict();
- if(!r.ok){let message='Storage unavailable';try{message=(await r.json()).error||message}catch{}throw Error(message)}
- revision=r.headers?.get('ETag')??revision;savedRecords=records;
+ if(!r.ok){
+  if([400,413,415,428].includes(r.status))pendingSave=null;
+  let message='Storage unavailable';try{message=(await r.json()).error||message}catch{}throw Error(message);
+ }
+ const result=typeof r.json==='function'?await r.json():{};
+ revision=r.headers?.get('ETag')??result.revision??revision;savedRecords=pending.records;pendingSave=null;
 }
 export async function exportLibrary(library,name){
  const encoded=encodeLibrary(await portableLibrary(library));

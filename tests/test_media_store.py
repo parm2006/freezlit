@@ -70,6 +70,19 @@ class ImageStoreTests(unittest.TestCase):
         with self.assertRaises(FileExistsError):self.patch(before,after,rev)
         self.assertEqual(self.store.load()[1],revision)
         self.assertEqual(self.store.patch({'set':[],'remove':[]},revision),revision)
+    def test_lost_response_retries_are_acknowledged_without_reapplying(self):
+        before,rev=self.store.load(library());after=copy.deepcopy(before);after['decks'][0]['cards'][0]['term']='First saved edit'
+        a,b=flatten(before),flatten(after)
+        changes={'set':[[k,v] for k,v in b.items() if a.get(k)!=v],'remove':[],'requestId':'save-operation-123456789'}
+        committed=self.store.patch(changes,rev)
+        self.assertEqual(self.store.patch(changes,rev),committed)
+        newer=copy.deepcopy(after);newer['decks'][0]['cards'][0]['term']='Another window edit'
+        latest=self.patch(after,newer,committed)
+        self.assertEqual(self.store.patch(changes,rev),committed)
+        self.assertEqual(self.store.load(),(newer,latest))
+        reused=copy.deepcopy(changes);reused['set'][0][1]['term']='Different payload'
+        with self.assertRaises(ValueError):self.store.patch(reused,rev)
+
     def test_missing_reference_rejected_without_losing_committed_data(self):
         before,rev=self.store.load(library());after=copy.deepcopy(before)
         after['decks'][0]['cards'][0]['termImage']='/api/media/'+'a'*64

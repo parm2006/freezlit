@@ -36,6 +36,19 @@ try{
  await first.click({button:'right',position:{x:spellingWord.x-(await first.boundingBox()).x,y:spellingWord.y-(await first.boundingBox()).y}});await page.getByRole('menu',{name:'Spelling suggestions'}).waitFor();
  await page.locator('[data-draft="title"]').click();assert.equal(await page.getByRole('menu',{name:'Spelling suggestions'}).count(),0);
  await page.evaluate(()=>delete window.pywebview);
+ // A committed request whose response is lost must replay safely, then save newer typing.
+ let dropReply=true;
+ await page.route('**/api/state',async route=>{
+  if(route.request().method()==='PUT'&&dropReply){dropReply=false;const committed=await route.fetch();assert.ok(committed.ok());await route.abort('failed')}
+  else await route.continue();
+ });
+ await first.fill('Edit committed before its reply was lost');
+ assert.equal(await page.evaluate(()=>window.freezlitFlushPendingWork()),false);
+ await first.fill('Newer typing after the lost response');
+ assert.equal(await page.evaluate(()=>window.freezlitFlushPendingWork()),true);
+ await page.unroute('**/api/state');
+ const recoveredSave=await page.request.get('/api/state').then(r=>r.json());assert.equal(recoveredSave.editorDrafts[0].deck.cards[0].term,'Newer typing after the lost response');
+
 
  await first.fill('Continuous typing: ');const before=patches.length;
  await first.pressSequentially('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',{delay:55});
@@ -74,7 +87,7 @@ try{
  await page.reload();await page.getByRole('button',{name:'Edit deck',exact:true}).waitFor();
  await page.setViewportSize({width:760,height:800});await page.screenshot({path:path.join(out,'narrow.png')});
  assert.deepEqual(errors,[]);
- const report={passed:true,typingLongTasksOver50ms:typingTasks.length,maxTypingLongTaskMs:Math.max(0,...typingTasks),scenario:'60-card synthetic image-heavy Japanese Periods',textSaveBytes:patches.map(p=>JSON.stringify(p).length),originalsLoadedOnlyOnDemand:true,portableImages:5,checks:['migration','spelling popup replacement and save','continuous typing max wait','focus-out save','idle no-op','draft recovery','thumbnails','original preview and release','image upload','clipboard paste','single-deck portable export','portable re-import','one-sided save','empty-new-card filtering','Back','reload','760px layout'],pageErrors:errors};
+ const report={passed:true,typingLongTasksOver50ms:typingTasks.length,maxTypingLongTaskMs:Math.max(0,...typingTasks),scenario:'60-card synthetic image-heavy Japanese Periods',textSaveBytes:patches.map(p=>JSON.stringify(p).length),originalsLoadedOnlyOnDemand:true,portableImages:5,checks:['migration','spelling popup replacement and save','lost save response recovery','continuous typing max wait','focus-out save','idle no-op','draft recovery','thumbnails','original preview and release','image upload','clipboard paste','single-deck portable export','portable re-import','one-sided save','empty-new-card filtering','Back','reload','760px layout'],pageErrors:errors};
  await fs.writeFile(path.join(out,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 }finally{if(browser)await browser.close();server.kill();if(log)console.error(log)}
 

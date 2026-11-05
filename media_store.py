@@ -176,7 +176,7 @@ class IncrementalStore:
         db = sqlite3.connect(self.folder/'library.sqlite3', timeout=30)
         db.execute('PRAGMA journal_mode=WAL')
         db.execute('PRAGMA synchronous=FULL')
-        db.executescript('CREATE TABLE IF NOT EXISTS records(k TEXT PRIMARY KEY,v TEXT NOT NULL); CREATE TABLE IF NOT EXISTS previous_records(k TEXT PRIMARY KEY,v TEXT NOT NULL); CREATE TABLE IF NOT EXISTS state(id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL); INSERT OR IGNORE INTO state VALUES(1,0);')
+        db.executescript('CREATE TABLE IF NOT EXISTS records(k TEXT PRIMARY KEY,v TEXT NOT NULL); CREATE TABLE IF NOT EXISTS previous_records(k TEXT PRIMARY KEY,v TEXT NOT NULL); CREATE TABLE IF NOT EXISTS state(id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL); INSERT OR IGNORE INTO state VALUES(1,0); CREATE TABLE IF NOT EXISTS save_receipts(id TEXT PRIMARY KEY,digest TEXT NOT NULL,revision INTEGER NOT NULL);')
         try:
             with db:
                 yield db
@@ -197,10 +197,19 @@ class IncrementalStore:
             return assemble(rows), str(db.execute('SELECT revision FROM state').fetchone()[0])
 
     def patch(self, patch, expected):
-        if not isinstance(patch,dict) or set(patch) != {'set','remove'} or not isinstance(patch['set'],list) or not isinstance(patch['remove'],list):
+        if not isinstance(patch,dict) or not {'set','remove'} <= set(patch) or not set(patch) <= {'set','remove','requestId'} or not isinstance(patch['set'],list) or not isinstance(patch['remove'],list):
             raise ValueError('Invalid changes.')
+        request_id=patch.get('requestId')
+        if request_id is not None and (not isinstance(request_id,str) or not re.fullmatch(r'[A-Za-z0-9-]{16,128}',request_id)):
+            raise ValueError('Invalid save request ID.')
+        digest=hashlib.sha256(json.dumps({'set':patch['set'],'remove':patch['remove']},sort_keys=True,ensure_ascii=False,allow_nan=False,separators=(',',':')).encode('utf-8')).hexdigest()
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
+            if request_id is not None:
+                receipt=db.execute('SELECT digest,revision FROM save_receipts WHERE id=?',(request_id,)).fetchone()
+                if receipt:
+                    if receipt[0]!=digest:raise ValueError('Save request ID was reused with different changes.')
+                    return str(receipt[1])
             rev = db.execute('SELECT revision FROM state').fetchone()[0]
             if str(rev) != expected:
                 raise FileExistsError('This library changed in another window. Export your edits before reloading.')
@@ -227,6 +236,9 @@ class IncrementalStore:
                 db.executemany('INSERT OR REPLACE INTO records VALUES(?,?)',[(k,json.dumps(v,ensure_ascii=False,allow_nan=False,separators=(',',':'))) for k,v in patch['set']])
                 rev += 1
                 db.execute('UPDATE state SET revision=?',(rev,))
+            if request_id is not None:
+                db.execute('INSERT INTO save_receipts VALUES(?,?,?)',(request_id,digest,rev))
+                db.execute('DELETE FROM save_receipts WHERE rowid NOT IN (SELECT rowid FROM save_receipts ORDER BY rowid DESC LIMIT 4096)')
             return str(rev)
 
     def collect(self, now=None):

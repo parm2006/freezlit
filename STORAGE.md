@@ -28,3 +28,5 @@ The native Swift macOS edition retains its existing storage bridge; this SQLite/
 - Packaged clone: after building into `build/clone-dist`, run `python scripts/test-packaged-clone.py`. Tests migration, original bytes, thumbnails, changed-card persistence, packaged assets and restart recovery using a separate synthetic directory.
 
 Remaining limit: portable JSON export still gathers originals in memory, and saving compares all metadata records to find changes. Ordinary edits never load originals or serialize image bytes; the app has not moved portable export to streaming archives. Close guards cannot protect against OS termination or power loss before an autosave has committed.
+
+Save requests carry unique IDs. SQLite retains the latest 4096 operation receipts so retrying a committed save after a lost response acknowledges the original operation without applying it again. The client retries that exact request before saving newer edits, and accepts the confirmed revision from the response body if the header is unavailable. Different changes still require the current revision; receipts do not bypass another window's edits.

@@ -352,7 +352,7 @@ class FreezlitHandler(BaseHTTPRequestHandler):
                         return
                     patch = json.loads(body.decode('utf-8'), parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Invalid number.')))
                     etag = IncrementalStore(self.server.data_folder).patch(patch, expected)
-                    result = {'ok':True}
+                    result = {'ok':True,'revision':etag}
             self.respond(200,result,headers={'ETag':etag} if etag is not None else None)
         except FileExistsError as exc:
             self.error(409,str(exc))
