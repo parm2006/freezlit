@@ -1,6 +1,6 @@
 import {generateStarterLibrary,removeLegacyStarter} from './starter-data.js';
 import {readLibrary,exportLibrary,speakText,stopSpeech,createSaveCoordinator,decodeLibrary} from './storage.js';
-import {uid,DAY,shuffle,correct,face,schedule,intervalLabel,queue,makeTest,grade,parseDelimited,validateLibrary} from './engine.js';
+import {uid,DAY,shuffle,correct,face,schedule,intervalLabel,queue,makeTest,grade,parseDelimited,validateLibrary,validImage} from './engine.js';
 const app=document.querySelector('#app');
 const icons={book:'<rect x="7" y="3" width="10" height="17" rx="1.4" fill="var(--ground,#f6f5ef)" transform="rotate(-18 12 21)"/><rect x="7" y="3" width="10" height="17" rx="1.4" fill="var(--tint,#e8eee6)"/><g transform="rotate(18 12 21)"><rect x="7" y="3" width="10" height="17" rx="1.4" fill="var(--ground,#f6f5ef)"/><path d="M9.5 8h5M9.5 11h3"/></g>',plus:'<path d="M12 5v14M5 12h14"/>',arrow:'<path d="m9 5 7 7-7 7"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',sound:'<path d="M4 9h4l5-5v16l-5-5H4zM17 8a6 6 0 0 1 0 8M20 5a10 10 0 0 1 0 14"/>',swap:'<path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/>',check:'<path d="m5 12 4 4L19 6"/>',close:'<path d="m6 6 12 12M18 6 6 18"/>',download:'<path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/>',settings:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>',search:'<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>'};
 const icon=n=>`<svg viewBox="0 0 24 24" aria-hidden="true">${icons[n]||icons.book}</svg>`;
@@ -161,14 +161,58 @@ async function action(a,el){try{if(a==='cloze'){clozeView();return}if(a==='make-
 app.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(el){e.preventDefault();action(el.dataset.action,el)}});
 document.addEventListener('pointerdown',e=>{if(mode==='charms'&&e.target.closest('[data-action="charm"]')){const input=document.querySelector('#answer');if(input&&document.activeElement===input){session.answerHadFocus=true;session.answerSelection=[input.selectionStart,input.selectionEnd]}}},true);
 app.addEventListener('input',e=>{const t=e.target;updateTestInput(t);if(t.id==='answer'&&session){session.answerInput=t.value;session.answerSelection=[t.selectionStart,t.selectionEnd]}if(t.id==='test-count'||t.dataset.testType)rememberTestConfig();if(t.id==='card-search'){search=t.value;renderCards()}if(t.dataset.draft)draft[t.dataset.draft]=t.value;if(t.dataset.card){const c=draft?.cards.find(c=>c.id===t.dataset.card);if(c)c[t.dataset.field]=t.dataset.field==='tags'?t.value.split(',').map(s=>s.trim()).filter(Boolean):t.type==='checkbox'?t.checked:t.value;if(view==='editor')persistEditorDraft()}});
-async function attachCardImage(file,cardId,field){const draftId=editorDraftId,deckId=draft?.id;persistEditorDraft();const read=(async()=>{const image=await readImage(file);if(!image)return;const record=data.editorDrafts?.find(r=>r.id===draftId),target=draft?.id===deckId?draft:record?.deck,card=target?.cards.find(c=>c.id===cardId);if(card){card[field]=image;if(draft===target&&view==='editor'){storeEditorDraft(draftId,data.decks.some(d=>d.id===deckId)?deckId:null,target,draftBaseFingerprint);renderEditor()}else if(record){record.deck=structuredClone(target);record.updatedAt=Date.now();saver.request()}}})();pendingImageReads.add(read);try{await read}finally{pendingImageReads.delete(read)}}
+async function attachCardImage(file,cardId,field,read=readImage){const draftId=editorDraftId,deckId=draft?.id;persistEditorDraft();const pending=(async()=>{const image=await read(file);if(!image)return;const record=data.editorDrafts?.find(r=>r.id===draftId),target=draft?.id===deckId?draft:record?.deck,card=target?.cards.find(c=>c.id===cardId);if(card){card[field]=image;if(draft===target&&view==='editor'){storeEditorDraft(draftId,data.decks.some(d=>d.id===deckId)?deckId:null,target,draftBaseFingerprint);const input=app.querySelector(`[data-image-card="${CSS.escape(cardId)}"][data-image-field="${field}"]`);if(input)input.closest('.image-edit').outerHTML=imageEditor(card,field,target.cards.indexOf(card))}else if(record){record.deck=structuredClone(target);record.updatedAt=Date.now();saver.request()}}})();const settled=pending.catch(()=>{});pendingImageReads.add(settled);try{await pending}finally{pendingImageReads.delete(settled)}}
+function clipboardImage(clipboard){
+  const direct=Array.from(clipboard.files).find(file=>file.type.startsWith('image/'))
+    ||Array.from(clipboard.items).find(item=>item.kind==='file'&&item.type.startsWith('image/'))?.getAsFile();
+  const html=clipboard.getData('text/html');
+  if(!html)return {direct};
+  const template=document.createElement('template');
+  template.innerHTML=html;
+  const embedded=Array.from(template.content.querySelectorAll('img[src]'),img=>img.getAttribute('src'))
+    .find(src=>/^data:image\/(png|jpeg|webp|gif);base64,/.test(src));
+  return {direct,embedded};
+}
+async function readPastedImage({direct,embedded}){
+  let failure;
+  if(direct){
+    try{
+      const bitmap=/^image\/(bmp|x-ms-bmp|x-bmp|dib)$/.test(direct.type);
+      if(direct.size>8*1024*1024)throw Error('Choose an image smaller than 8 MB.');
+      const url=bitmap?URL.createObjectURL(direct):await readImage(direct);
+      try{
+        const img=new Image();
+        img.src=url;
+        await img.decode();
+        if(!bitmap)return url;
+        const canvas=document.createElement('canvas');
+        canvas.width=img.naturalWidth;
+        canvas.height=img.naturalHeight;
+        canvas.getContext('2d').drawImage(img,0,0);
+        const png=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+        if(!png)throw Error('Could not convert the clipboard image.');
+        return await readImage(png);
+      }finally{if(bitmap)URL.revokeObjectURL(url)}
+    }catch(e){failure=e}
+  }
+  if(embedded){
+    if(embedded.length-embedded.indexOf(',')-1>Math.ceil(8*1024*1024/3)*4)throw Error('Choose an image smaller than 8 MB.');
+    if(!validImage(embedded))throw Error('Could not read that image.');
+    const img=new Image();
+    img.src=embedded;
+    await img.decode();
+    return embedded;
+  }
+  throw failure;
+}
 app.addEventListener('paste',async e=>{
   const {card,field}=e.target.dataset;
-  if(view!=='editor'||!card||(field!=='term'&&field!=='definition'))return;
-  const file=Array.from(e.clipboardData?.files||[]).find(file=>file.type.startsWith('image/'));
-  if(!file)return;
+  if(view!=='editor'||!card||(field!=='term'&&field!=='definition')||!e.clipboardData)return;
+  const image=clipboardImage(e.clipboardData);
+  if(!image.direct&&!image.embedded)return;
   e.preventDefault();
-  try{await attachCardImage(file,card,field==='term'?'termImage':'definitionImage')}catch(e){toast(e.message)}
+  try{await attachCardImage(image,card,field==='term'?'termImage':'definitionImage',readPastedImage)}
+  catch(e){toast(e.name==='EncodingError'?'Could not attach that clipboard image. Try copying the original image again.':e.message)}
 });
 app.addEventListener('change',async e=>{try{const t=e.target;updateTestInput(t);if(t.id==='test-count'||t.dataset.testType)rememberTestConfig();if(t.id==='occlusion-file'){await loadMask(t.files[0]);return}if(['direction','starOnly','random','strict'].includes(t.id)){if(t.id==='random'){random=t.checked;setShuffleChoice(selected,mode,random);save();return}if(t.id==='strict'){strict=t.checked;if(session){session.strict=strict;if(mode==='test')rememberTest();drawSession()}else overview();return}if(t.id==='direction')direction=t.value;if(t.id==='starOnly')starOnly=t.checked;if(session?.questions){overview();return}if(session){drawSession();return}overview()}else if(t.dataset.imageCard){await attachCardImage(t.files[0],t.dataset.imageCard,t.dataset.imageField)}else if(t.id==='import-file'){const file=t.files[0];if(!file)return;if(file.size>100*1024*1024)throw Error('Import files must be smaller than 100 MB.');const text=await file.text();if(file.name.endsWith('.json'))mergeImport(JSON.parse(text),document.querySelector('#json-import-mode')?.value||'add');else{document.querySelector('#import-text').value=text;document.querySelector('#import-title').value=file.name.replace(/\.[^.]+$/,'');document.querySelector('#separator').value=file.name.endsWith('.csv')?'comma':'tab';toast('File loaded. Check the separator and headings, then create the deck.')}}}catch(e){toast(e.message)}});
 app.addEventListener('submit',e=>{e.preventDefault();if(e.target.id==='answer-form')answer(document.querySelector('#answer').value);if(e.target.id==='test-form'){const fields=new FormData(e.target);session.questions.forEach((q,i)=>{q.input=String(fields.get('q'+i)||'');q.historyId=logPractice(deck().cards.find(c=>c.id===q.cardId),grade(q,session.strict??strict),'test').id});session.submitted=true;rememberTest();drawSession();document.querySelector('#study').scrollIntoView({block:'start'})}});
