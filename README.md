@@ -4,7 +4,7 @@ A free Windows and Mac study app that keeps your cards, images, and progress on 
 
 ## Windows install
 
-Download **Freezlit-Windows-v1.3.2.zip** from [Releases](https://github.com/parm2006/freezlit/releases), extract it, then run **Install Freezlit.cmd**. It installs for your Windows user and adds Desktop and Start Menu shortcuts. No administrator access is needed. You can also run **Freezlit.exe** directly from the extracted folder.
+Download **Freezlit-Windows-v1.3.3.zip** from [Releases](https://github.com/parm2006/freezlit/releases/latest), extract it, then run **Install Freezlit.cmd**. It installs for your Windows user and adds Desktop and Start Menu shortcuts. No administrator access is needed. You can also run **Freezlit.exe** directly from the extracted folder.
 
 **Python is bundled in Freezlit.exe; no Python or pip installation is needed to use the release.** Windows 10/11, 64-bit, with Microsoft Edge WebView2 Runtime is required. Most Windows installations already have it. If the app reports it missing, install the [Microsoft WebView2 Evergreen Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/). The executable is unsigned; Windows may show a reputation warning.
 
@@ -18,7 +18,30 @@ The native Mac app embeds the study interface and uses macOS files, save dialogs
 
 ## Mac verification
 
-GitHub’s macOS runner builds both processor architectures, runs native storage/bridge tests and the actual application, and captures test results and screenshots. The release uses the [successful cloud build](https://github.com/parm2006/freezlit/actions/runs/38609075619): eight native tests passed on ARM64 macOS 15.7.9, followed by checks in the running release app. Intel was compiled and checked for its executable slice, but was not run on an Intel Mac. These checks establish behavior on the tested cloud Mac, rather than on every Mac model. Build source and commands are documented in [macos/README.md](macos/README.md). iOS shares the JavaScript study logic in principle but is not included in this Mac release.
+GitHub’s [macOS workflow](https://github.com/parm2006/freezlit/actions/workflows/macos.yml) builds both processor architectures, runs native storage/bridge tests and the actual application, and captures test results and screenshots. Release notes link the builds used for each download. Intel is compiled and checked for its executable slice, but is not run on an Intel Mac. These checks establish behavior on the tested cloud Mac, rather than on every Mac model. Build source and commands are documented in [macos/README.md](macos/README.md). iOS is not included.
+
+## Version 1.3.3
+
+The existing **Import cards** screen now has an explicit **Quizlet export** format and step-by-step instructions. It preserves literal quotes, Unicode, commas and semicolons, rejects malformed rows, and adds a new deck without replacing existing decks, drafts or study progress. This release also includes the clipboard image support and save/recovery improvements described below.
+
+On Windows, if the default library is missing, Freezlit copies an existing previous library or legacy Recall library into place before creating starter content. An existing current library always takes priority, and custom data directories are unchanged. Libraries from a newer format show deck titles and an incompatibility message without overwriting the file.
+
+## Import a Quizlet set
+
+1. On the **Quizlet website**, open a set you created and choose **More → Export**.
+2. Choose **Tab** between terms and definitions and **New line** between cards, then **Copy text**.
+3. In Freezlit, open **Import cards**, enter a deck title, and select **Quizlet export (tab + new line)**.
+4. Paste the copied text and choose **Create deck from text**. Each row becomes one card in a new deck.
+
+Quizlet only supports exporting sets you created; copied sets cannot be exported. Its [official export guide](https://help.quizlet.com/hc/en-us/articles/360034345672-Exporting-your-sets) says image exports are unavailable because of copyright restrictions. This flow imports text only. Quizlet does not document a supported image-data export for these sets; printing and offline study are not importable image backups. Add any images you own separately in the editor.
+
+Other text imports support CSV, TSV and TXT, an optional notes column, column headings, and quoted multiline fields. For a complete Freezlit-to-Freezlit transfer including images and progress, use a JSON library backup.
+
+## Copy and paste images
+
+Create or edit a deck, click inside a card’s **term or definition** text field, and paste a copied image or screenshot with **Ctrl+V** on Windows or **Command+V** on Mac. The image attaches to that side of the card and the field keeps focus. Save the deck when finished.
+
+Clipboard bitmap files and embedded clipboard images are supported. If the source app or clipboard history provides an unreadable image, the existing attachment stays intact. If the clipboard supplies only a file path or a web link, use the image file picker instead. Images can also be attached independently to both sides with the editor’s file controls. Individual image files are limited to 8 MB; saved images are embedded in your library and included in JSON backups.
 
 ## Version 1.3.2
 

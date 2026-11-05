@@ -117,6 +117,10 @@ await test('Quoted CSV handles escaped quote, embedded comma/newline and BOM',()
 });
 await test('TSV handles empty fields and skips blank records',()=>assert.deepEqual(E.parseDelimited('a\tb\r\n\r\nx\t\ty'),[['a','b'],['x','','y']]));
 await test('TSV preserves quotes inside unquoted fields',()=>assert.deepEqual(E.parseDelimited('Say "hello"\tgreeting','\t'),[['Say "hello"','greeting']]));
+await test('Quizlet export preserves plain text and rejects invalid card rows',()=>{
+ assert.deepEqual(E.parseQuizlet('\uFEFF"café"\tcoffee, shop; or both\r\n\r\n猫\t"cat\r\n'),[['"café"','coffee, shop; or both'],['猫','"cat']]);
+ for(const text of ['term,definition','term\t','\tdefinition','term\tdefinition\textra'])assert.throws(()=>E.parseQuizlet(text),/choose Tab and New line/);
+});
 await test('Library rejects duplicates, empty content, external/SVG images',()=>{
  assert.throws(()=>E.validateLibrary(lib({}, {term:' '})));
  assert.throws(()=>E.validateLibrary(lib({}, {termImage:'https://example.test/image.png'})));
