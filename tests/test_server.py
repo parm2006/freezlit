@@ -51,6 +51,28 @@ class RuntimeTests(unittest.TestCase):
         connection.close()
         return result
 
+    def test_reuses_only_known_legacy_library_and_never_overwrites_current(self):
+        from server import migrate_windows_library, read_snapshot
+
+        root = self.web.parent
+        canonical = root / "Freezlit"
+        legacy = root / "Recall"
+        other = root / "Unrelated"
+        other.mkdir()
+        (other / "library.json").write_text('{"decks":[]}', encoding="utf-8")
+        migrate_windows_library(canonical)
+        self.assertFalse(canonical.exists())
+        legacy.mkdir()
+        original = '{"version":3,"decks":[{"title":"Future deck","cards":{"future":true}}]}'
+        old = legacy / "library.json"
+        old.write_text(original, encoding="utf-8")
+        migrate_windows_library(canonical)
+        self.assertEqual(read_snapshot(canonical)[0]["decks"][0]["title"], "Future deck")
+        self.assertEqual((canonical / "library.json").read_bytes(), old.read_bytes())
+        old.write_text('{"decks":[]}', encoding="utf-8")
+        migrate_windows_library(canonical)
+        self.assertEqual((canonical / "library.json").read_text(encoding="utf-8"), original)
+
     def test_initial_empty_library(self):
         status, body, _ = self.request()
         self.assertEqual(status, 200)
