@@ -1,8 +1,10 @@
+import {enableSpellingMenu} from './spelling-menu.js';
 import {storeImage,thumbnail,prepareImages} from './media.js';
 import {generateStarterLibrary,removeLegacyStarter} from './starter-data.js';
 import {readLibrary,exportLibrary,speakText,stopSpeech,createSaveCoordinator,decodeLibrary,IncompatibleLibrary} from './storage.js';
 import {uid,DAY,shuffle,correct,face,schedule,intervalLabel,queue,makeTest,grade,parseDelimited,parseQuizlet,validateLibrary,validImage,cardsForSave} from './engine.js';
 const app=document.querySelector('#app');
+enableSpellingMenu(app);
 const icons={book:'<rect x="7" y="3" width="10" height="17" rx="1.4" fill="var(--ground,#f6f5ef)" transform="rotate(-18 12 21)"/><rect x="7" y="3" width="10" height="17" rx="1.4" fill="var(--tint,#e8eee6)"/><g transform="rotate(18 12 21)"><rect x="7" y="3" width="10" height="17" rx="1.4" fill="var(--ground,#f6f5ef)"/><path d="M9.5 8h5M9.5 11h3"/></g>',plus:'<path d="M12 5v14M5 12h14"/>',arrow:'<path d="m9 5 7 7-7 7"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',sound:'<path d="M4 9h4l5-5v16l-5-5H4zM17 8a6 6 0 0 1 0 8M20 5a10 10 0 0 1 0 14"/>',swap:'<path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/>',check:'<path d="m5 12 4 4L19 6"/>',close:'<path d="m6 6 12 12M18 6 6 18"/>',download:'<path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/>',settings:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>',search:'<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>'};
 const icon=n=>`<svg viewBox="0 0 24 24" aria-hidden="true">${icons[n]||icons.book}</svg>`;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

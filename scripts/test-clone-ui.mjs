@@ -25,6 +25,18 @@ try{
  await page.evaluate(()=>window.freezlitFlushPendingWork());
  await page.evaluate(()=>{window.__typingTasks=[];new PerformanceObserver(list=>window.__typingTasks.push(...list.getEntries().map(e=>e.duration))).observe({type:'longtask'})});
  const first=page.locator('[data-field="term"]').first();
+ // Exercise the app popup with the native bridge contract, without touching a live library.
+ await page.evaluate(()=>{window.pywebview={api:{spelling_suggestions:async()=>({available:true,correct:false,suggestions:['misspelled']})}}});
+ await first.fill('A mispelled word');
+ const spellingWord=await page.evaluate(async()=>{const {wordAtPoint}=await import('/spelling-menu.js');const input=document.querySelector('[data-field="term"]'),r=input.getBoundingClientRect();for(let x=r.left+2;x<r.right;x+=3){const w=wordAtPoint(input,x,r.top+20);if(w?.word==='mispelled')return {x,y:r.top+20}}throw Error('Could not locate wrapped field word')});
+ await first.click({button:'right',position:{x:spellingWord.x-(await first.boundingBox()).x,y:spellingWord.y-(await first.boundingBox()).y}});
+ assert.equal(await page.getByRole('menuitem',{name:'Close',exact:true}).count(),0);
+ await page.getByRole('menuitem',{name:'misspelled',exact:true}).click();assert.equal(await first.inputValue(),'A misspelled word');
+ await page.evaluate(()=>window.freezlitFlushPendingWork());const corrected=await page.request.get('/api/state').then(r=>r.json());assert.equal(corrected.editorDrafts[0].deck.cards[0].term,'A misspelled word');
+ await first.click({button:'right',position:{x:spellingWord.x-(await first.boundingBox()).x,y:spellingWord.y-(await first.boundingBox()).y}});await page.getByRole('menu',{name:'Spelling suggestions'}).waitFor();
+ await page.locator('[data-draft="title"]').click();assert.equal(await page.getByRole('menu',{name:'Spelling suggestions'}).count(),0);
+ await page.evaluate(()=>delete window.pywebview);
+
  await first.fill('Continuous typing: ');const before=patches.length;
  await first.pressSequentially('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',{delay:55});
  await page.waitForFunction(()=>document.querySelector('[data-status]')?.textContent==='Saved on this device',null,{timeout:1500}).catch(()=>{});
@@ -62,7 +74,7 @@ try{
  await page.reload();await page.getByRole('button',{name:'Edit deck',exact:true}).waitFor();
  await page.setViewportSize({width:760,height:800});await page.screenshot({path:path.join(out,'narrow.png')});
  assert.deepEqual(errors,[]);
- const report={passed:true,typingLongTasksOver50ms:typingTasks.length,maxTypingLongTaskMs:Math.max(0,...typingTasks),scenario:'60-card synthetic image-heavy Japanese Periods',textSaveBytes:patches.map(p=>JSON.stringify(p).length),originalsLoadedOnlyOnDemand:true,portableImages:5,checks:['migration','continuous typing max wait','focus-out save','idle no-op','draft recovery','thumbnails','original preview and release','image upload','clipboard paste','single-deck portable export','portable re-import','one-sided save','empty-new-card filtering','Back','reload','760px layout'],pageErrors:errors};
+ const report={passed:true,typingLongTasksOver50ms:typingTasks.length,maxTypingLongTaskMs:Math.max(0,...typingTasks),scenario:'60-card synthetic image-heavy Japanese Periods',textSaveBytes:patches.map(p=>JSON.stringify(p).length),originalsLoadedOnlyOnDemand:true,portableImages:5,checks:['migration','spelling popup replacement and save','continuous typing max wait','focus-out save','idle no-op','draft recovery','thumbnails','original preview and release','image upload','clipboard paste','single-deck portable export','portable re-import','one-sided save','empty-new-card filtering','Back','reload','760px layout'],pageErrors:errors};
  await fs.writeFile(path.join(out,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 }finally{if(browser)await browser.close();server.kill();if(log)console.error(log)}
 

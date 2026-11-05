@@ -426,6 +426,10 @@ class CloseAPI:
     def finish_close(self, ok):
         self._guard.finish_close(ok)
 
+    def spelling_suggestions(self, word):
+        from spelling import suggestions
+        return suggestions(word)
+
 
 def main():
     clone = Path(sys.executable).stem.lower() == 'freezlitclone' or os.environ.get('FREEZLIT_CLONE') == '1'

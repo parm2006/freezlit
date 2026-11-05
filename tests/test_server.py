@@ -15,6 +15,12 @@ spec.loader.exec_module(module)
 
 
 class SpellingMenuTests(unittest.TestCase):
+    def test_spelling_bridge_calls_the_native_dictionary(self):
+        api=module.CloseAPI(None)
+        with patch('spelling.suggestions',return_value={'available':True,'suggestions':['sentence']}) as lookup:
+            self.assertEqual(api.spelling_suggestions('sentnce')['suggestions'],['sentence'])
+            lookup.assert_called_once_with('sentnce')
+
     def test_enables_native_menu_on_ui_thread(self):
         settings = SimpleNamespace(AreDefaultContextMenusEnabled=False, AreDevToolsEnabled=False)
         invoked = []
