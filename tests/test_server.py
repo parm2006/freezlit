@@ -121,6 +121,17 @@ class RuntimeTests(unittest.TestCase):
         migrate_windows_library(canonical)
         self.assertEqual((canonical / "library.json").read_text(encoding="utf-8"), original)
 
+    def test_incremental_state_reuses_known_legacy_library(self):
+        legacy=self.root/'Recall';legacy.mkdir()
+        value={'version':1,'decks':[{'id':'existing','title':'Existing deck','cards':[]}]}
+        original=json.dumps(value).encode();(legacy/'library.json').write_bytes(original)
+        self.server.migrate_legacy=True
+        status,body,_=self.request(path='/api/state')
+        self.assertEqual(status,200)
+        self.assertEqual(json.loads(body)['decks'],value['decks'])
+        self.assertEqual((self.folder/'library.json').read_bytes(),original)
+        self.assertEqual((legacy/'library.json').read_bytes(),original)
+
     def test_initial_empty_library(self):
         status, body, _ = self.request()
         self.assertEqual(status, 200)

@@ -62,5 +62,6 @@ try:
 finally:
     subprocess.run(['taskkill','/PID',str(process.pid),'/T','/F'],check=True,stdout=subprocess.DEVNULL);process.wait(timeout=15)
 report={'passed':True,'binary':exe.name,'packagedAssetsMatchSource':True,'migrationPreservedLegacy':True,'originalSHA256Verified':True,'thumbnailWebP':True,'incrementalSaveBytes':len(patch),'restartPreservedEdits':True}
+(root/'build/qa-results').mkdir(parents=True,exist_ok=True)
 (root/'build/qa-results/packaged-report.json').write_text(json.dumps(report,indent=2))
 print(json.dumps(report))

@@ -226,6 +226,8 @@ class FreezlitHandler(BaseHTTPRequestHandler):
         route = urlsplit(self.path).path
         if route == "/api/state":
             try:
+                if self.server.migrate_legacy:
+                    migrate_windows_library(self.server.data_folder)
                 with store_lock(self.server.data_folder):
                     store = IncrementalStore(self.server.data_folder)
                     value, etag = store.load()
