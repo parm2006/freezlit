@@ -1,4 +1,5 @@
-"""Smoke-test only a separately named clone binary against synthetic, isolated data."""
+"""Smoke-test a packaged binary under build/ against synthetic, isolated data only."""
+import argparse
 import hashlib
 import http.client
 import json
@@ -10,8 +11,10 @@ import sys
 import time
 
 root=Path(__file__).resolve().parents[1]
-exe=(root/'build/clone-dist/FreezlitClone.exe').resolve()
-assert exe.name=='FreezlitClone.exe' and exe.is_relative_to(root/'build')
+parser=argparse.ArgumentParser()
+parser.add_argument('--exe',type=Path,default=root/'build/clone-dist/FreezlitClone.exe')
+exe=parser.parse_args().exe.resolve()
+assert exe.name in ('FreezlitClone.exe','Freezlit.exe') and exe.is_relative_to(root/'build')
 folder=root/'build/packaged-qa-data'
 folder.mkdir(parents=True,exist_ok=True)
 legacy=(root/'build/qa-data/library.json').read_bytes()
@@ -22,7 +25,7 @@ for name in ('library.sqlite3','library.sqlite3-wal','library.sqlite3-shm'):
 def start():
     with socket.socket() as sock:
         sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
-    env={**os.environ,'FREEZLIT_CLONE_DATA_DIR':str(folder)}
+    env={**os.environ,'FREEZLIT_CLONE_DATA_DIR':str(folder),'FREEZLIT_DATA_DIR':str(folder)}
     process=subprocess.Popen([str(exe),'--no-browser','--port',str(port)],env=env,creationflags=subprocess.CREATE_NO_WINDOW)
     def request(method,path,body=None,headers=None):
         connection=http.client.HTTPConnection('127.0.0.1',port,timeout=10)
@@ -58,6 +61,6 @@ try:
     assert value['decks'][0]['cards'][0]['term']=='Saved through packaged clone'
 finally:
     subprocess.run(['taskkill','/PID',str(process.pid),'/T','/F'],check=True,stdout=subprocess.DEVNULL);process.wait(timeout=15)
-report={'passed':True,'binary':'FreezlitClone.exe','packagedAssetsMatchSource':True,'migrationPreservedLegacy':True,'originalSHA256Verified':True,'thumbnailWebP':True,'incrementalSaveBytes':len(patch),'restartPreservedEdits':True}
+report={'passed':True,'binary':exe.name,'packagedAssetsMatchSource':True,'migrationPreservedLegacy':True,'originalSHA256Verified':True,'thumbnailWebP':True,'incrementalSaveBytes':len(patch),'restartPreservedEdits':True}
 (root/'build/qa-results/packaged-report.json').write_text(json.dumps(report,indent=2))
 print(json.dumps(report))
