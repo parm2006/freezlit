@@ -20,56 +20,21 @@ The native Mac app embeds the study interface and uses macOS files, save dialogs
 
 GitHub’s [macOS workflow](https://github.com/parm2006/freezlit/actions/workflows/macos.yml) builds both processor architectures, runs native storage/bridge tests and the actual application, and captures test results and screenshots. Release notes link the builds used for each download. Intel is compiled and checked for its executable slice, but is not run on an Intel Mac. These checks establish behavior on the tested cloud Mac, rather than on every Mac model. Build source and commands are documented in [macos/README.md](macos/README.md). iOS is not included.
 
-## Version 1.3.3
+## New in 1.3.3
 
-The existing **Import cards** screen now has an explicit **Quizlet export** format and step-by-step instructions. It preserves literal quotes, Unicode, commas and semicolons, rejects malformed rows, and adds a new deck without replacing existing decks, drafts or study progress. This release also includes the clipboard image support and save/recovery improvements described below.
+Quizlet text import with literal quotes and Unicode preserved; clipboard image paste; safer saves, recoverable editor/test drafts, and clearer library compatibility messages. Windows also recovers an existing previous or legacy Recall library when the default library is missing.
 
-On Windows, if the default library is missing, Freezlit copies an existing previous library or legacy Recall library into place before creating starter content. An existing current library always takes priority, and custom data directories are unchanged. Libraries from a newer format show deck titles and an incompatibility message without overwriting the file.
+## Import cards
 
-## Import a Quizlet set
+Export your Quizlet set as text with tabs between terms and definitions and new lines between cards. In Freezlit, open **Import cards**, name the deck, select **Quizlet export (tab + new line)**, paste, and choose **Create deck from text**. This adds a new deck and keeps existing decks, drafts and study progress.
 
-1. On the **Quizlet website**, open a set you created and choose **More → Export**.
-2. Choose **Tab** between terms and definitions and **New line** between cards, then **Copy text**.
-3. In Freezlit, open **Import cards**, enter a deck title, and select **Quizlet export (tab + new line)**.
-4. Paste the copied text and choose **Create deck from text**. Each row becomes one card in a new deck.
+[Quizlet exports text only](https://help.quizlet.com/hc/en-us/articles/360034345672-Exporting-your-sets), without images. Add your own images in the editor. CSV, TSV and TXT imports also support an optional notes column and quoted multiline fields. Use a JSON backup to transfer Freezlit images and progress.
 
-Quizlet only supports exporting sets you created; copied sets cannot be exported. Its [official export guide](https://help.quizlet.com/hc/en-us/articles/360034345672-Exporting-your-sets) says image exports are unavailable because of copyright restrictions. This flow imports text only. Quizlet does not document a supported image-data export for these sets; printing and offline study are not importable image backups. Add any images you own separately in the editor.
+## Add images
 
-Other text imports support CSV, TSV and TXT, an optional notes column, column headings, and quoted multiline fields. For a complete Freezlit-to-Freezlit transfer including images and progress, use a JSON library backup.
+Create or edit a deck, click a card’s **term or definition** field, and paste an image or screenshot with **Ctrl+V** / **Command+V**. The image attaches to that side; save the deck when finished. You can also use the image file picker.
 
-## Copy and paste images
-
-Create or edit a deck, click inside a card’s **term or definition** text field, and paste a copied image or screenshot with **Ctrl+V** on Windows or **Command+V** on Mac. The image attaches to that side of the card and the field keeps focus. Save the deck when finished.
-
-Clipboard bitmap files and embedded clipboard images are supported. If the source app or clipboard history provides an unreadable image, the existing attachment stays intact. If the clipboard supplies only a file path or a web link, use the image file picker instead. Images can also be attached independently to both sides with the editor’s file controls. Individual image files are limited to 8 MB; saved images are embedded in your library and included in JSON backups.
-
-## Version 1.3.2
-
-The deck editor accepts clipboard bitmaps and embedded images, keeps the card field focused after pasting, and preserves the previous attachment if a pasted image cannot be read.
-
-## Version 1.3.1
-
-Paste a copied image or screenshot into a card’s term or definition field to attach it directly.
-
-## Version 1.3
-
-This update protects large and repeated images during saves, batches changes safely, and detects edits from another open window instead of overwriting them. Tests save their answers and resume when you switch study modes; editor drafts, including incomplete cards, recover from the library screen. Saving an edited deck preserves its review progress. Mac close and quit wait for pending saves, and backups can be exported even when they exceed the normal library limit.
-
-Spaced review always shuffles the cards eligible for that session. Due dates, daily limits, suspended cards and buried cards still determine which cards are eligible.
-
-After a wrong practice answer, choose **I was correct** to count it as correct without adding another attempt. This updates saved history and the mode's score/progress, including Learn mastery. After a correct practice answer, press any normal key to continue (Tab, modifier keys and system shortcuts retain their usual behavior). Submitted tests offer the same button; the original typed answer stays visible, and the corrected score survives tab changes and reopening the app.
-
-Normal typed-answer grading lowercases both answers and removes all whitespace, including spaces inside words and numbers: `19 - 12` and `19-1 2` match `19-12`. Existing common-punctuation and alternative-answer handling remain. **Exact grading** still requires the same case, punctuation and internal spacing (outer spaces are ignored).
-
-## Version 1.1
-
-Fresh installations include only the **Active Recall** starter deck. Right-click a deck in the library and choose **Delete deck** to remove it. Keyboard users can focus a deck and press **Shift+F10**. Deletion asks for confirmation and also removes that deck’s saved tests and progress. Upgrades permanently remove the old stock demo and its retired archive, including its linked progress. Custom decks are preserved. Only a one-way fingerprint for recognizing the exact former stock remains; its card content is absent from the source and release. Other decks can be removed through the library menu.
-
-The interface, app window and executable use the splayed flashcard-deck icon.
-
-Study screens use compact controls and omit the tagline, breadcrumb, local-only badge, save-status footer, deck-description line, End session control, and duplicate card list beneath the activity. Tests now produce the requested count: for example, 20 questions from 8 cards use shuffled repeat cycles. The active test, its question order, answers, grading settings and result persist when switching study-mode tabs or reloading; **New test** explicitly starts another test. Test setup remembers the selected count and question types per deck.
-
-The editor's **Additional info (optional)** field adds readable prompt context in Flashcards, Spaced review, Write, Learn, Spell and Test. It can be left blank. It does not become part of the definition or required answer: a Kofun Period card can ask for `300-538` while showing separate context about burial mounds. Existing cards remain compatible.
+Bitmap and embedded clipboard images are supported. An unreadable paste leaves the existing image intact. Each image is limited to 8 MB and is included in JSON backups.
 
 ## Study your way
 
