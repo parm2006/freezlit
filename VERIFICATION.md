@@ -135,3 +135,12 @@ Implemented in `codex/freezlitclone`, independently of the installed application
 - Desktop interactive smoke test was limited by a computer-use app-launch approval timeout. Native spelling popup and immediate close after a real OS clipboard paste remain manual checks; they are not claimed as verified.
 
 Proof files are retained under `build/clone-verification/`. Temporary clone data and its executable are disposable test artifacts, not production backups. No production build or live-library migration was performed. The user's approval is still required before rebuilding/installing the main app.
+
+
+## v1.4.0 publication and local upgrade — 2026-11-05
+
+Published [v1.4.0](https://github.com/parm2006/freezlit/releases/tag/v1.4.0) from `29253bc59c53b71d5313bc556ea7553ea33ace84` after explicit approval. Windows CI [42101609741](https://github.com/parm2006/freezlit/actions/runs/42101609741) passed on that commit; Mac CI [42101228864](https://github.com/parm2006/freezlit/actions/runs/42101228864) passed on `6eb9a80`, whose native Mac sources, shared UI and version metadata are identical. Local checks: 42 engine, 10 starter-data, 29 storage and 23 Python tests (104 total), plus packaged Windows migration/save/restart smoke checks.
+
+Release ZIP contents matched the tested executable and contained no private library data. Published asset digests were checked before installing. The installed executable SHA-256 is `c00a28ca93e048fc3eeb028ba10bae1863ab3ff3b4f0361837ae09e7324cc1c8`. A private copy of the existing library passed full metadata comparison, original-image byte checks and frontend validation before the live upgrade. The installed app then answered `/api/state`, retained its deck/card/draft/image totals, and opened a native window. Original JSON and a complete pre-update folder/executable backup were retained. Private backup location is recorded locally in `build/v1.4.0/backup-path.txt`.
+
+Real typing feel, the native spelling popup and immediate close following a real OS screenshot paste remain manual checks; no automated editing was performed on the live user's cards.

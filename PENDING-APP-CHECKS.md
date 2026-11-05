@@ -1,6 +1,6 @@
 # App checks — November 5, 2026
 
-The source has been tested in an isolated FreezlitClone worktree with synthetic data. The production executable has not been rebuilt, replaced or restarted, and the live library has not been migrated. Rebuilding/installing the production app requires the user's explicit approval.
+The source was tested in an isolated FreezlitClone worktree. After explicit user approval, v1.4.0 was built, published to GitHub, installed and opened on November 5, 2026. A complete private pre-update data/executable backup was retained. The live-library migration preserved metadata and original images; individual interactions below still need manual checks.
 
 ## Automated checks completed
 
@@ -15,7 +15,7 @@ The source has been tested in an isolated FreezlitClone worktree with synthetic 
 - [x] Separate FreezlitClone.exe was built and its packaged local service passed migration, original SHA-256, thumbnail, changed-card save, bundled-asset and restart checks.
 - [x] Native close guard unit tests: successful saves close, failed saves keep the window open, and an unresponsive renderer permits an explicit close-anyway confirmation.
 
-## Still requires a rebuilt production app and manual check
+## Manual checks in the installed v1.4.0 app
 
 - [ ] Smooth typing in the user's actual Japanese Periods deck and other real image-heavy decks.
 - [ ] Native spelling suggestions: right-click an underlined misspelling and choose a correction. The Windows menu configuration has a passing unit test; the computer-use native clone launch approval timed out, so the popup is not manually verified.
@@ -24,7 +24,7 @@ The source has been tested in an isolated FreezlitClone worktree with synthetic 
 
 ## Evidence and limits
 
-JavaScript: 42 engine, 10 starter-data and 29 storage tests passed. Python: 22 tests passed. Browser and packaged-clone reports are retained in `build/clone-verification/` after removing the temporary clone.
+JavaScript: 42 engine, 10 starter-data and 29 storage tests passed. Python: 23 tests passed for the release, including legacy-library discovery. Browser and packaged-clone reports are retained in `build/clone-verification/` after removing the temporary clone.
 
 In the synthetic typing run, changed-card requests were about 650–700 bytes after the initial recovery snapshot; no typing tasks exceeded 50 ms. This is not a measurement of the live user library and does not prove that every out-of-memory case is fixed.
 
