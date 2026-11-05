@@ -17,7 +17,21 @@ export function encodeLibrary(library){
  visitImages(encoded,(object,field)=>{const image=object[field];if(!validImage(image))throw Error('Invalid embedded image.');let id=ids.get(image);if(id===undefined){id='m'+ids.size;ids.set(image,id);media[id]=image}object[field]={mediaId:id}});
  encoded.version=2;encoded.media=media;return encoded;
 }
+export class IncompatibleLibrary extends Error {
+ constructor(decks){
+  super('This library contains decks that require a newer version of Freezlit.');
+  this.decks=decks;
+ }
+}
 export function decodeLibrary(library){
+ const newer=Number.isInteger(library?.version)&&library.version>2;
+ if(Array.isArray(library?.decks)){
+  const decks=library.decks.map(deck=>({
+   title:typeof deck?.title==='string'&&deck.title.trim()?deck.title:'Untitled deck',
+   incompatible:newer||(Number.isInteger(deck?.deckFormatVersion)&&deck.deckFormatVersion>1)
+  }));
+  if(decks.some(deck=>deck.incompatible)||newer)throw new IncompatibleLibrary(decks);
+ }
  if(library===null||library?.version===1)return library;
  if(library?.version!==2||!library.media||typeof library.media!=='object'||Array.isArray(library.media))throw Error('Unsupported or invalid library format.');
  for(const image of Object.values(library.media))if(!validImage(image))throw Error('Invalid embedded image.');

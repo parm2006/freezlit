@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {isNativeApp,readLibrary,writeLibrary,exportLibrary,speakText,stopSpeech,encodeLibrary,decodeLibrary,createSaveCoordinator,StorageConflict} from '../web/storage.js';
+import {isNativeApp,readLibrary,writeLibrary,exportLibrary,speakText,stopSpeech,encodeLibrary,decodeLibrary,createSaveCoordinator,StorageConflict,IncompatibleLibrary} from '../web/storage.js';
 
 let passed=0,failed=0;
 async function test(name,run){
@@ -28,6 +28,12 @@ await test('Native detection tolerates missing window and incomplete bridges',()
 await test('Version 2 storage deduplicates images across cards and test drafts',()=>{
  const source={version:1,decks:[{id:'d',title:'Deck',cards:[{id:'c',term:'a',definition:'b',termImage:image}]}],history:[],records:{},testDrafts:{d:{questions:[{id:'q',cardId:'c',promptImage:image,answerImage:image}]}},editorDrafts:[{id:'draft',deckId:'d',deck:{id:'d',cards:[{id:'c',term:'a',definition:'b',termImage:image}]}}]};
  const encoded=encodeLibrary(source);assert.equal(encoded.version,2);assert.deepEqual(Object.keys(encoded.media),['m0']);assert.equal(encoded.decks[0].cards[0].termImage.mediaId,'m0');assert.equal(encoded.testDrafts.d.questions[0].answerImage.mediaId,'m0');assert.equal(encoded.editorDrafts[0].deck.cards[0].termImage.mediaId,'m0');assert.deepEqual(decodeLibrary(encoded),source);assert.equal(source.decks[0].cards[0].termImage,image);
+});
+await test('A newer library keeps deck titles visible without decoding its cards',()=>{
+ const future={version:3,decks:[{title:'New deck',cards:{unknown:true}}]};
+ assert.throws(()=>decodeLibrary(future),e=>e instanceof IncompatibleLibrary&&e.decks[0].title==='New deck'&&e.decks[0].incompatible);
+ const mixed={version:2,decks:[{title:'Existing deck',cards:[]},{title:'New deck',deckFormatVersion:2}]};
+ assert.throws(()=>decodeLibrary(mixed),e=>e instanceof IncompatibleLibrary&&!e.decks[0].incompatible&&e.decks[1].incompatible);
 });
 await test('Version 2 decoder rejects missing media references',()=>{
  const encoded=encodeLibrary({version:1,decks:[{id:'d',title:'Deck',cards:[{id:'c',term:'a',definition:'b',termImage:image}]}]});encoded.media={};assert.throws(()=>decodeLibrary(encoded),/reference/);

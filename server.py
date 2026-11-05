@@ -63,14 +63,20 @@ def web_directory() -> Path:
     return Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) / "web"
 
 
-def validate_library(value):
+def validate_library(value, *, allow_newer=False):
     if not isinstance(value, dict):
         raise ValueError("Library must be a JSON object.")
     if not isinstance(value.get("decks"), list):
         raise ValueError("Library must contain a decks array.")
     if len(value["decks"]) > 10000:
         raise ValueError("A library can contain at most 10,000 decks.")
+    version = value.get("version")
+    newer_library = type(version) is int and version > 2
     for deck in value["decks"]:
+        if isinstance(deck, dict):
+            deck_version = deck.get("deckFormatVersion")
+            if allow_newer and (newer_library or (type(deck_version) is int and deck_version > 1)):
+                continue
         if not isinstance(deck, dict) or not isinstance(deck.get("cards"), list):
             raise ValueError("Every deck must be an object with a cards array.")
         if any(not isinstance(card, dict) for card in deck["cards"]):
@@ -91,7 +97,37 @@ def read_snapshot(folder: Path):
     if not path.exists():
         return None, revision(None)
     data = path.read_bytes()
-    return validate_library(json.loads(data.decode("utf-8"))), revision(data)
+    return validate_library(json.loads(data.decode("utf-8")), allow_newer=True), revision(data)
+
+
+def migrate_windows_library(folder: Path):
+    """Copy the first existing library from known local app directories."""
+    destination = folder / "library.json"
+    candidates = (folder / "library.previous.json", folder.with_name("Recall") / "library.json")
+    if destination.exists() or not any(path.is_file() for path in candidates):
+        return
+    with store_lock(folder):
+        if destination.exists():
+            return
+        for candidate in candidates:
+            if not candidate.is_file():
+                continue
+            data = candidate.read_bytes()
+            if len(data) > MAX_BYTES:
+                raise ValueError("The existing library exceeds the 100 MB storage limit.")
+            validate_library(json.loads(data.decode("utf-8")), allow_newer=True)
+            staged = None
+            try:
+                with tempfile.NamedTemporaryFile(dir=folder, prefix="migration-", suffix=".tmp", delete=False) as stream:
+                    staged = Path(stream.name)
+                    stream.write(data)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(staged, destination)
+            finally:
+                if staged is not None:
+                    staged.unlink(missing_ok=True)
+            return
 
 
 def write_library(folder: Path, value, expected_revision=None):
@@ -130,6 +166,9 @@ class FreezlitServer(ThreadingHTTPServer):
 
     def __init__(self, port=8765, folder=None, web=None):
         self.data_folder = Path(folder) if folder else data_directory()
+        self.migrate_legacy = folder is None and sys.platform == "win32" and not (
+            os.environ.get("FREEZLIT_DATA_DIR") or os.environ.get("RECALL_DATA_DIR")
+        )
         self.web_folder = (Path(web) if web else web_directory()).resolve()
         super().__init__(("127.0.0.1", port), FreezlitHandler)
 
@@ -182,6 +221,8 @@ class FreezlitHandler(BaseHTTPRequestHandler):
         route = urlsplit(self.path).path
         if route == "/api/library":
             try:
+                if self.server.migrate_legacy:
+                    migrate_windows_library(self.server.data_folder)
                 with store_lock(self.server.data_folder):
                     value, etag = read_snapshot(self.server.data_folder)
                 self.respond(200, value, headers={"ETag": etag})
