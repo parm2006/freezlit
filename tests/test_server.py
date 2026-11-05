@@ -5,11 +5,31 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 SOURCE = Path(__file__).resolve().parents[1] / "server.py"
 spec = importlib.util.spec_from_file_location("recall_server", SOURCE)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
+
+
+class SpellingMenuTests(unittest.TestCase):
+    def test_enables_native_menu_on_ui_thread(self):
+        settings = SimpleNamespace(AreDefaultContextMenusEnabled=False, AreDevToolsEnabled=False)
+        invoked = []
+
+        def invoke(callback):
+            invoked.append(callback)
+            callback()
+
+        window = SimpleNamespace(native=SimpleNamespace(
+            webview=SimpleNamespace(CoreWebView2=SimpleNamespace(Settings=settings)), Invoke=invoke))
+        with patch.dict("sys.modules", {"System": SimpleNamespace(Action=lambda callback: callback)}):
+            module.enable_spelling_menu(window)
+        self.assertEqual(len(invoked), 1)
+        self.assertTrue(settings.AreDefaultContextMenusEnabled)
+        self.assertFalse(settings.AreDevToolsEnabled)
 
 
 class RuntimeTests(unittest.TestCase):

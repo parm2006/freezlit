@@ -91,7 +91,7 @@ export function validateLibrary(value){
    if(!object(c)||!id(c.id)||cids.has(c.id))throw Error('Card IDs must be unique strings within a deck.');cids.add(c.id);
    if(typeof c.term!=='string'||typeof c.definition!=='string')throw Error('Cards need term and definition text fields.');
    for(const field of ['termImage','definitionImage'])if(c[field]&&!validImage(c[field]))throw Error('Images must be valid embedded PNG, JPEG, WebP or GIF base64 data (at most 16 MB).');
-   if(!c.term.trim()&&!c.termImage||!c.definition.trim()&&!c.definitionImage)throw Error('Each card needs content on both sides.');
+
    for(const field of ['starred','suspended'])if(c[field]!==undefined&&typeof c[field]!=='boolean')throw Error('Card flags must be true or false.');
    if(c.buriedUntil!==undefined&&!timestamp(c.buriedUntil))throw Error('A card has an invalid burial date.');
    if(c.tags!==undefined&&(!Array.isArray(c.tags)||c.tags.some(t=>typeof t!=='string')))throw Error('Card tags must be text.');
@@ -115,4 +115,9 @@ export function validateLibrary(value){
   draftIds.add(r.id);return true;
  });
  return value
+}
+
+export function cardsForSave(cards,existing=[]){
+ const savedIds=new Set(existing.map(c=>c.id));
+ return cards.filter(c=>savedIds.has(c.id)||['term','definition','notes','additionalInfo'].some(field=>c[field]?.trim())||c.termImage||c.definitionImage||c.tags?.some(tag=>tag.trim())||c.starred||c.suspended||c.buriedUntil||Object.keys(c.schedule||{}).length);
 }

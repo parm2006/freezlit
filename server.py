@@ -291,6 +291,16 @@ class FreezlitHandler(BaseHTTPRequestHandler):
             self.error(500, "Library could not be saved. Your previous file has been preserved.")
 
 
+def enable_spelling_menu(window):
+    """Restore WebView2's spelling/edit menu without enabling debug mode."""
+    from System import Action
+
+    def configure():
+        window.native.webview.CoreWebView2.Settings.AreDefaultContextMenusEnabled = True
+
+    window.native.Invoke(Action(configure))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run Freezlit locally; all study data stays on this computer.")
     parser.add_argument("--port", type=int, default=8765)
@@ -322,7 +332,9 @@ def main():
             # pywebview defaults to blocking Blob downloads. Its Windows handler
             # prompts with a native SaveFileDialog before writing exported JSON.
             webview.settings["ALLOW_DOWNLOADS"] = True
-            webview.create_window("Freezlit", url, width=1180, height=800, min_size=(760, 600), background_color="#F6F5F1")
+            window = webview.create_window("Freezlit", url, width=1180, height=800, min_size=(760, 600), background_color="#F6F5F1")
+            if sys.platform == "win32":
+                window.events.loaded += enable_spelling_menu
             icon_path = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) / "assets" / "freezlit.ico"
             webview.start(gui="edgechromium" if sys.platform == "win32" else None, private_mode=True,
                           icon=str(icon_path) if icon_path.is_file() else None)

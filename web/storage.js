@@ -13,8 +13,23 @@ function visitImages(library,visit){
 }
 export function encodeLibrary(library){
  if(!library||library.version!==1)throw Error('Unsupported library version.');
- const encoded=structuredClone(library),media=Object.create(null),ids=new Map();
- visitImages(encoded,(object,field)=>{const image=object[field];if(!validImage(image))throw Error('Invalid embedded image.');let id=ids.get(image);if(id===undefined){id='m'+ids.size;ids.set(image,id);media[id]=image}object[field]={mediaId:id}});
+ const media=Object.create(null),ids=new Map();
+ const encodeImages=(object,fields)=>{
+  const copy={...object};
+  for(const field of fields)if(copy[field]){
+   const image=copy[field];let id=ids.get(image);
+   if(id===undefined){if(!validImage(image))throw Error('Invalid embedded image.');id='m'+ids.size;ids.set(image,id);media[id]=image}
+   copy[field]={mediaId:id};
+  }
+  return copy;
+ };
+ const encodeDeck=deck=>({...deck,cards:deck.cards?.map(card=>encodeImages(card,imageFields.slice(0,2)))});
+ // Remove image strings before cloning the snapshot, so each original is stored only once.
+ const encoded=structuredClone({...library,
+  decks:library.decks?.map(encodeDeck),
+  ...(library.testDrafts?{testDrafts:Object.fromEntries(Object.entries(library.testDrafts).map(([id,test])=>[id,{...test,questions:test.questions?.map(q=>encodeImages(q,imageFields.slice(2)))}]))}:{}),
+  ...(library.editorDrafts?{editorDrafts:library.editorDrafts.map(draft=>({...draft,deck:encodeDeck(draft.deck)}))}:{})
+ });
  encoded.version=2;encoded.media=media;return encoded;
 }
 export class IncompatibleLibrary extends Error {

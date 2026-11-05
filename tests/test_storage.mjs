@@ -21,6 +21,33 @@ await test('Test persistence saves one independent snapshot without stale timer 
 function bridge(handler){globalThis.window={webkit:{messageHandlers:{freezlit:{postMessage:handler}}}}}
 function forbidFetch(){globalThis.fetch=()=>{throw Error('Native calls must not use the localhost fetch service')}}
 
+await test('Editor typing keeps a detached live draft without cloning image data',()=>{
+ const source=readFileSync(new URL('../web/app.js',import.meta.url),'utf8');
+ const store=source.match(/function storeEditorDraft\([^\n]+/)[0];
+ const saved=structuredClone(library.decks[0]),draft=structuredClone(saved);draft.cards[0].termImage=image;
+ const data={decks:[saved]},saver={requests:0,request(){this.requests++}};
+ const persist=new Function('data','saver',store+';return storeEditorDraft')(data,saver);
+ persist('draft','deck',draft,'base');draft.cards[0].term='Typed text';persist('draft','deck',draft,'base');
+ assert.equal(data.editorDrafts.length,1);assert.equal(data.editorDrafts[0].deck,draft);
+ assert.equal(data.editorDrafts[0].deck.cards[0].term,'Typed text');assert.equal(saved.cards[0].term,'Kofun Period');assert.equal(saver.requests,2);
+});
+await test('Encoding removes full images before cloning and preserves an independent snapshot',()=>{
+ const source=structuredClone(library);source.decks[0].cards[0].termImage=image;
+ const clone=globalThis.structuredClone;let inspected=false;
+ try{
+  globalThis.structuredClone=value=>{assert.ok(!JSON.stringify(value).includes(image));inspected=true;return clone(value)};
+  const encoded=encodeLibrary(source);assert.ok(inspected);source.decks[0].cards[0].term='Later edit';
+  globalThis.structuredClone=clone;assert.equal(decodeLibrary(encoded).decks[0].cards[0].term,'Kofun Period');
+ }finally{globalThis.structuredClone=clone}
+});
+await test('Typed test answers snapshot text without copying image payloads',()=>{
+ const source=readFileSync(new URL('../web/app.js',import.meta.url),'utf8');
+ const update=source.match(/function updateTestInput\(target\)\{[\s\S]*?\n\}/)[0];
+ const data={},session={questions:[{input:'',promptImage:image}]};let requests=0;
+ new Function('data','session','saver',"const mode='test';const selected='deck';"+update+";updateTestInput({name:'q0',value:'answer'});")(data,session,{request(){requests++}});
+ session.questions[0].input='next';assert.equal(data.testDrafts.deck.questions[0].input,'answer');assert.equal(data.testDrafts.deck.questions[0].promptImage,image);assert.equal(requests,1);
+});
+
 await test('Native detection tolerates missing window and incomplete bridges',()=>{
  delete globalThis.window;assert.equal(isNativeApp(),false);assert.doesNotThrow(()=>stopSpeech());
  for(const window of [{},{webkit:{}},{webkit:{messageHandlers:{freezlit:{postMessage:true}}}}]){globalThis.window=window;assert.equal(isNativeApp(),false)}

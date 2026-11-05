@@ -121,11 +121,17 @@ await test('Quizlet export preserves plain text and rejects invalid card rows',(
  assert.deepEqual(E.parseQuizlet('\uFEFF"café"\tcoffee, shop; or both\r\n\r\n猫\t"cat\r\n'),[['"café"','coffee, shop; or both'],['猫','"cat']]);
  for(const text of ['term,definition','term\t','\tdefinition','term\tdefinition\textra'])assert.throws(()=>E.parseQuizlet(text),/choose Tab and New line/);
 });
-await test('Library rejects duplicates, empty content, external/SVG images',()=>{
- assert.throws(()=>E.validateLibrary(lib({}, {term:' '})));
+await test('Library rejects duplicates and external/SVG images',()=>{
+ assert.equal(E.validateLibrary(lib({}, {term:' ',definition:''})).decks[0].cards[0].definition,'');
  assert.throws(()=>E.validateLibrary(lib({}, {termImage:'https://example.test/image.png'})));
  assert.throws(()=>E.validateLibrary(lib({}, {termImage:'data:image/svg+xml;base64,AAAA'})));
  const l=lib();l.decks[0].cards.push({...l.decks[0].cards[0]});assert.throws(()=>E.validateLibrary(l));
+});
+await test('Saving strips only new cards without content or options',()=>{
+ const blank=card('blank',{term:'',definition:'',notes:'',tags:[],schedule:{}});
+ const kept=[card('front',{definition:''}),card('back',{term:''}),{...blank,id:'notes',notes:'Keep me'},{...blank,id:'info',additionalInfo:'Context'},{...blank,id:'image',termImage:'data:image/png;base64,iVBORw0KGgo='},{...blank,id:'tag',tags:['tag']},{...blank,id:'star',starred:true},{...blank,id:'existing'}];
+ assert.deepEqual(E.cardsForSave([blank,{...blank,id:'spaces',term:'  '},...kept],[kept.at(-1)]),kept);
+ for(const c of kept)assert.equal(E.validateLibrary(lib({},c)).decks[0].cards[0].definition,c.definition);
 });
 await test('Library accepts embedded image-only content',()=>assert.equal(E.validateLibrary(lib({}, {term:'',termImage:'data:image/png;base64,iVBORw0KGgo='})).version,1));
 await test('Library accepts real app review state and formatted personal bests',()=>{
