@@ -59,9 +59,7 @@ def create_manager():
     import velopack
     if installation_root() is None:
         raise RuntimeError('Install FreezlitSetup.exe once to enable updates. Your decks will be kept.')
-    source = velopack.HttpSource(REPOSITORY + '/releases/latest/download',
-                                velopack.HttpOptions([], 120_000))
-    return velopack.UpdateManager(source)
+    return velopack.UpdateManager(velopack.GithubSource(REPOSITORY))
 
 
 class Updater:

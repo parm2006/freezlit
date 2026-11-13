@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from updater import Updater, app_lock, create_manager, installation_root
+from updater import REPOSITORY, Updater, app_lock, create_manager, installation_root
 
 
 class UpdaterTests(unittest.TestCase):
@@ -98,6 +98,14 @@ class UpdaterTests(unittest.TestCase):
         with patch('updater.installation_root', return_value=None):
             with self.assertRaisesRegex(RuntimeError, 'Install FreezlitSetup.exe'):
                 create_manager()
+
+    def test_updates_use_the_public_repository_source(self):
+        fake = SimpleNamespace(GithubSource=Mock(), UpdateManager=Mock())
+        with patch.dict(sys.modules, velopack=fake), patch('updater.installation_root', return_value=self.root):
+            result = create_manager()
+        fake.GithubSource.assert_called_once_with(REPOSITORY)
+        fake.UpdateManager.assert_called_once_with(fake.GithubSource.return_value)
+        self.assertIs(result, fake.UpdateManager.return_value)
 
 
 if __name__ == '__main__':
