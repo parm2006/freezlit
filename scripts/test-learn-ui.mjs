@@ -50,7 +50,7 @@ try{
  await page.setViewportSize({width:1180,height:800});
  await page.locator('[data-mode="learn"]').click();
  await page.locator('#random').uncheck();
- await page.locator('[data-action="start"]').click();
+ await page.locator('[data-mode="learn"]').focus();await page.keyboard.press('Enter');
  assert.equal(await page.locator('.question-face').innerText(),'Term 8','Due cards come first');
  await page.locator('#answer').fill('Partial answer');
  await hints.check();await page.locator('.additional-info').waitFor({state:'visible'});
