@@ -5,6 +5,11 @@ build/
 dist/
 *.spec
 library*.json
+*.sqlite3
+*.sqlite3-*
+.env
+.env.*
+!.env.example
 node_modules/
 .DS_Store
 

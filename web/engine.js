@@ -6,6 +6,15 @@ export const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Ma
 export const normalize=s=>String(s||'').normalize('NFKC').toLowerCase().replace(/\s+/g,'').replace(/[.,!?;:]/g,(c,i,v)=>/\d/.test(v[i-1]||'')||/\d/.test(v[i+1]||'')?c:'');
 export function correct(input,answer,strict=false){return String(answer).split('|').some(a=>strict?String(input).trim()===a.trim():normalize(a)===normalize(input))}
 export function face(card,direction='forward'){return direction==='reverse'?{prompt:card.definition,answer:card.term,promptImage:card.definitionImage,answerImage:card.termImage}:{prompt:card.term,answer:card.definition,promptImage:card.termImage,answerImage:card.definitionImage}}
+export function answerChoices(card,cards,direction){
+ const answer=face(card,direction).answer,seen=new Set([normalize(answer)]);
+ const distractors=shuffle(cards.filter(c=>c.id!==card.id)).map(c=>face(c,direction).answer).filter(value=>{
+  const key=normalize(value);
+  if(!key||seen.has(key)||value.split('|').some(alias=>correct(alias,answer)))return false;
+  seen.add(key);return true;
+ }).slice(0,3);
+ return shuffle([answer,...distractors]);
+}
 export function validImage(value){
  if(isImagePointer(value))return true;
  if(typeof value!=='string'||value.length>16*1024*1024)return false;
@@ -99,6 +108,9 @@ export function validateLibrary(value){
    if(c.tags!==undefined&&(!Array.isArray(c.tags)||c.tags.some(t=>typeof t!=='string')))throw Error('Card tags must be text.');
    if(c.notes!==undefined&&typeof c.notes!=='string')throw Error('Card notes must be text.');
    if(c.additionalInfo!==undefined&&typeof c.additionalInfo!=='string')throw Error('Card additional information must be text.');
+   if(c.learnSchedule!==undefined){
+    if(!object(c.learnSchedule)||Object.entries(c.learnSchedule).some(([direction,s])=>!['forward','reverse'].includes(direction)||!object(s)||!integer(s.box,0,3)||!timestamp(s.due)||['startedAt','learnedAt','checkedAt'].some(key=>s[key]!==undefined&&!timestamp(s[key]))))throw Error('A card has invalid Learn scheduling data.');
+   }
    if(c.schedule===undefined)c.schedule={};
    if(!object(c.schedule)||Object.keys(c.schedule).some(k=>!['forward','reverse'].includes(k)))throw Error('A card has invalid review directions.');
    for(const s of Object.values(c.schedule)){

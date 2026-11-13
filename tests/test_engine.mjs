@@ -57,6 +57,22 @@ await test('Typed answers support alternates, whitespace, Unicode and strict cas
  assert.ok(E.correct('  HELLO! ','hello|bonjour'));assert.ok(E.correct('Ａ','a'));
  assert.equal(E.correct('hello','Hello',true),false);assert.equal(E.correct('unrelated','hello'),false);
 });
+await test('Alpha and Beta are independent accepted answers with Exact grading off',()=>{
+ for(const input of ['alpha','Alpha','beta','Beta'])assert.ok(E.correct(input,'Alpha | Beta'));
+ assert.equal(E.correct('alpha','Alpha | Beta',true),false);
+ assert.ok(E.correct('Alpha','Alpha | Beta',true));
+ assert.equal(E.correct('alhpa','Alpha | Beta'),false);
+});
+await test('Answer choices draw from the supplied full deck and exclude blank or equivalent answers',()=>{
+ const target=card('target',{definition:'Alpha | Beta'});
+ const pool=[target,card('alias',{definition:'Beta'}),card('blank',{definition:''}),card('a',{definition:'A'}),card('duplicate',{definition:'a'}),card('b',{definition:'B'}),card('c',{definition:'C'})];
+ const choices=E.answerChoices(target,pool,'forward');
+ assert.equal(choices.length,4);assert.ok(choices.includes('Alpha | Beta'));
+ assert.equal(choices.includes('Beta'),false);assert.equal(choices.includes(''),false);
+ assert.equal(new Set(choices.map(E.normalize)).size,4);
+ assert.deepEqual(E.answerChoices(target,[target],'forward'),['Alpha | Beta']);
+ assert.equal(E.answerChoices(target,pool,'reverse').length,4);
+});
 await test('Lenient grading removes all whitespace and lowercases both answers',()=>{
  for(const input of ['19 - 12','        19-1 2','19\t-\n12','１９ - １２'])assert.ok(E.correct(input,'19-12'));
  assert.ok(E.correct('NeW\n Yo Rk','new york'));
