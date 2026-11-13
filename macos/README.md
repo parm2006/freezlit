@@ -1,3 +1,5 @@
+> Historical, unsupported source. Freezlit now supports Windows only; Mac builds, tests, and releases are discontinued.
+
 # Freezlit for macOS
 
 The Mac edition is a native AppKit application using the system WKWebView.

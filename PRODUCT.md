@@ -15,6 +15,6 @@ Local storage, installable Windows build, basic pleasant UI. Support either ques
 ## Visual commitment
 Quiet cream and green notebook interface, clear mode navigation and readable study cards. User requested basic and pleasant.
 
-## Mac edition
+## Supported platform
 
-Native macOS application requested by user, who has no Mac build machine or Apple Developer membership. Shares the local study interface/engine with Windows, and uses an AppKit/WebKit native shell with macOS storage, export and speech. GitHub-hosted Mac builds/tests provide runtime evidence. iOS packaging is outside this clarified request.
+Windows only. macOS and Linux support, automatic builds, and releases are discontinued. Retained Mac source is historical and unsupported.

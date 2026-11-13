@@ -1,3 +1,5 @@
+> Current support: Windows only. Mac results below are historical; macOS verification and releases are discontinued.
+
 # Verification — v1.1
 
 ## v1.4.3 themed confirmations — 2026-11-12

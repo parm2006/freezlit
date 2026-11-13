@@ -1,6 +1,6 @@
 # freezlit
 
-A free Windows and Mac study app that keeps your cards, images, and progress on your computer. No account or subscription. Independently built around familiar Quizlet study modes and Anki-style scheduled recall.
+A free Windows study app that keeps your cards, images, and progress on your computer. No account or subscription. Independently built around familiar Quizlet study modes and Anki-style scheduled recall.
 
 ## Windows install
 
@@ -10,17 +10,9 @@ After that, open **Update Freezlit**, download the available update, close the s
 
 **Python is bundled in Freezlit.exe; no Python or pip installation is needed to use the release.** Windows 10/11, 64-bit, with Microsoft Edge WebView2 Runtime is required. Most Windows installations already have it. If the app reports it missing, install the [Microsoft WebView2 Evergreen Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/). The executable is unsigned; Windows may show a reputation warning.
 
-## Mac install
+## Supported platform
 
-Download **Freezlit-macOS.dmg** or **Freezlit-macOS.zip** from the same release. Open the disk image and drag **Freezlit.app** to Applications, or extract the ZIP and move the app there. macOS 13 or later is required; the app is built for Apple Silicon and Intel. No Python, Node, or paid Apple Developer membership is needed to run it.
-
-This build is ad-hoc signed for bundle integrity but is not Developer-ID signed or notarized. macOS may block the first launch. See [Apple’s instructions for opening an app from an unknown developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac). The normal approval is made by the person using the Mac; no security settings are disabled by the app.
-
-The native Mac app embeds the study interface and uses macOS files, save dialogs, and speech. It does not start Python or a local HTTP server. Its data is stored in `~/Library/Application Support/Freezlit/library.json`, with a previous copy. Export/import JSON moves study decks and progress between Windows and Mac; there is no automatic synchronization.
-
-## Mac verification
-
-GitHub’s [macOS workflow](https://github.com/parm2006/freezlit/actions/workflows/macos.yml) builds both processor architectures, runs native storage/bridge tests and the actual application, and captures test results and screenshots. Release notes link the builds used for each download. Intel is compiled and checked for its executable slice, but is not run on an Intel Mac. These checks establish behavior on the tested cloud Mac, rather than on every Mac model. Build source and commands are documented in [macos/README.md](macos/README.md). iOS is not included.
+Windows is the only supported platform. macOS and Linux builds, testing, and releases are discontinued. Older Mac downloads and source are historical and unsupported.
 
 ## New in 1.3.3
 
@@ -57,7 +49,7 @@ To make a deck, use the **+** beside Your library. Images can be added independe
 
 The Windows source edition saves under `%LOCALAPPDATA%\Freezlit`: `library.sqlite3` holds changed records, `images/` holds originals, and `thumbnails/` holds compressed previews. Existing JSON libraries are migrated safely while their original file is retained; the previous committed state is retained in SQLite. Older installed releases continue using their existing JSON storage until rebuilt and updated. See [STORAGE.md](STORAGE.md) for migration, backup and recovery details. Export a full backup before moving computers or uninstalling. JSON imports add decks and preserve existing cards. Imported copies of existing deck IDs receive new IDs.
 
-The Windows application binds only to your computer's loopback interface and checks request origins. The native Mac app uses a local file bridge and blocks outbound navigation. Both use atomic file replacement. No telemetry, accounts, external fonts, or hosted content. System speech voices may depend on internet connectivity. Total library limit: 100 MB; each uploaded image: 8 MB.
+The Windows application binds only to your computer's loopback interface and checks request origins. Saves use atomic file replacement. No telemetry, accounts, external fonts, or hosted content. System speech voices may depend on internet connectivity. Total library limit: 100 MB; each uploaded image: 8 MB.
 
 ## Scope
 
@@ -72,7 +64,7 @@ python -m pip install -r requirements.txt
 python server.py
 ```
 
-The app opens in its own desktop window. A headless local-server mode for development is available with `python server.py --no-browser --port 8765`. `FREEZLIT_DATA_DIR` can select an isolated storage directory. Source can also run with pywebview's platform prerequisites on macOS/Linux; the Python-based packaged edition is tested on Windows; the native Mac edition uses the separate macOS build described above.
+The app opens in its own desktop window. A headless local-server mode for development is available with `python server.py --no-browser --port 8765`. `FREEZLIT_DATA_DIR` can select an isolated storage directory. Only Windows is supported and tested.
 
 ## Build and test
 
@@ -84,6 +76,6 @@ npm ci
 npm test
 ```
 
-See [VERIFICATION.md](VERIFICATION.md) for tested behavior. The native Mac build uses `npm ci`, `npm run native:web`, XcodeGen and Xcode on macOS; Windows users can use the repository’s macOS GitHub Actions build. The study engine and starter/storage contracts are shared.
+See [VERIFICATION.md](VERIFICATION.md) for tested behavior. Automatic build and verification workflows target Windows only.
 
 The source is MIT licensed. Bundled third-party runtime licenses are included with the release.
