@@ -1,5 +1,13 @@
 # Verification — v1.1
 
+## v1.4.3 themed confirmations — 2026-11-12
+
+- Replaced browser confirmations for deck deletion, draft discard, and backup restoration with centered dialogs in the existing cream-and-green theme. Dialogs name the action, explain the consequences, and do not display a localhost heading.
+- Cancel receives initial focus; Tab and Shift+Tab stay within the dialog, Escape cancels, and study shortcuts pause while a dialog is open.
+- 87 JavaScript checks and 29 Python checks passed locally. The isolated Edge regression passed deletion from the library menu and editor, Cancel/Enter/Escape data preservation, focus restoration, draft discard, backup restoration, and centered 390px layout, with no page errors or browser-native confirmations.
+- The packaged Windows app served the current app/dialog/style assets, displayed the themed confirmation, and preserved its synthetic library after cancellation. The shared native Mac web bundle built successfully; native Mac runtime verification is provided by the release workflow.
+- All automated interaction checks used synthetic libraries. Private backups and test libraries are excluded from release packages.
+
 
 
 Source and release checks on October 14, 2026. All checks used isolated data.

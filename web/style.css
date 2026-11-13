@@ -13,3 +13,14 @@
 [data-original]{cursor:zoom-in}[data-original]:focus-visible{outline:3px solid var(--green);outline-offset:3px}.image-dialog{border:1px solid var(--line);border-radius:12px;background:var(--ground);color:var(--ink);max-width:95vw;max-height:95vh;padding:16px}.image-dialog::backdrop{background:#17271fcc}.image-dialog button{display:block;margin-bottom:12px}.image-dialog img{display:block;max-width:85vw;height:auto}.image-dialog:modal{overflow:auto}
 
 .spelling-menu{position:fixed;z-index:110;min-width:180px;max-width:calc(100vw - 16px);padding:6px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:9px;box-shadow:0 6px 22px #243c3326}.spelling-menu p{margin:5px 10px 8px;font-size:13px;color:var(--muted)}.spelling-menu button{display:block;width:100%;text-align:left;padding:8px 10px;overflow-wrap:anywhere}.spelling-menu button:hover,.spelling-menu button:focus-visible{background:var(--tint)}
+
+.confirm-dialog{position:fixed;inset:0;margin:auto;width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:32px;border:1px solid var(--line);border-radius:var(--radius);background:var(--ground);color:var(--ink);box-shadow:0 24px 64px #17271f33;overflow-wrap:anywhere}
+.confirm-dialog::backdrop{background:#17271f66}
+.confirm-dialog h2{font:500 28px/1.2 Georgia,serif;letter-spacing:-.02em;margin:0 0 12px;text-wrap:balance}
+.confirm-dialog p{margin:0 0 28px}
+.confirm-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.confirm-actions button{min-height:44px}
+.confirm-actions .confirm-danger{background:var(--red);color:var(--paper)}
+.confirm-actions .confirm-danger:hover{background:#862e2b}
+@media(max-width:480px){.confirm-dialog{padding:24px}.confirm-actions button{flex:1}}
+@media(prefers-reduced-motion:no-preference){.confirm-dialog[open]{animation:confirm-enter .16s cubic-bezier(.16,1,.3,1)}@keyframes confirm-enter{from{opacity:.9;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}}
