@@ -20,6 +20,14 @@ try{
  await page.goto(base+'/');await page.getByRole('button',{name:'Edit deck',exact:true}).click();
  await page.locator('.edit-row').first().waitFor();
  assert.equal(await page.locator('.edit-row').count(),60);
+ const draftStar=page.locator('[data-action="draft-star"]').first();
+ assert.equal(await page.locator('[data-action="draft-star"]').count(),60);
+ assert.equal(await page.locator('input[data-field="starred"]').count(),0);
+ await draftStar.click();assert.equal(await draftStar.getAttribute('aria-pressed'),'true');
+ assert.equal(await draftStar.locator('svg').evaluate(el=>getComputedStyle(el).fill),'rgb(233, 199, 119)');
+ await page.evaluate(()=>window.freezlitFlushPendingWork());
+ const starredDraft=await page.request.get('/api/state').then(r=>r.json());assert.equal(starredDraft.editorDrafts[0].deck.cards[0].starred,true);
+ await draftStar.press('Space');assert.equal(await draftStar.getAttribute('aria-pressed'),'false');
  assert.ok(await page.locator('.image-edit img').first().getAttribute('src').then(s=>s.startsWith('/api/thumb/')));
  assert.equal(requests.filter(s=>/\/api\/media\/[a-f0-9]+$/.test(s)).length,0,'Originals should not load before click');
  await page.evaluate(()=>window.freezlitFlushPendingWork());
@@ -152,7 +160,7 @@ try{
  assert.equal(await page.locator('.editor').count(),0);
  assert.deepEqual(nativeDialogs,[],'All app confirmations must avoid browser-native dialogs');
  assert.deepEqual(errors,[]);
- const report={passed:true,typingLongTasksOver50ms:typingTasks.length,maxTypingLongTaskMs:Math.max(0,...typingTasks),scenario:'60-card synthetic image-heavy Japanese Periods',textSaveBytes:patches.map(p=>JSON.stringify(p).length),originalsLoadedOnlyOnDemand:true,portableImages:5,checks:['migration','spelling popup replacement and save','lost save response recovery','continuous typing max wait','focus-out save','idle no-op','draft recovery','thumbnails','original preview and release','image upload','clipboard paste','single-deck portable export','portable re-import','one-sided save','empty-new-card filtering','Back','reload','760px layout','themed deck deletion from menu and editor','draft discard confirmation','backup restore confirmation','Cancel and Escape preserve data','safe default focus and Tab wrapping','390px centered confirmation','no browser-native confirmations'],pageErrors:errors};
+ const report={passed:true,typingLongTasksOver50ms:typingTasks.length,maxTypingLongTaskMs:Math.max(0,...typingTasks),scenario:'60-card synthetic image-heavy Japanese Periods',textSaveBytes:patches.map(p=>JSON.stringify(p).length),originalsLoadedOnlyOnDemand:true,portableImages:5,checks:['one-click editor stars and keyboard toggle','starred draft persistence','migration','spelling popup replacement and save','lost save response recovery','continuous typing max wait','focus-out save','idle no-op','draft recovery','thumbnails','original preview and release','image upload','clipboard paste','single-deck portable export','portable re-import','one-sided save','empty-new-card filtering','Back','reload','760px layout','themed deck deletion from menu and editor','draft discard confirmation','backup restore confirmation','Cancel and Escape preserve data','safe default focus and Tab wrapping','390px centered confirmation','no browser-native confirmations'],pageErrors:errors};
  await fs.writeFile(path.join(out,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 }finally{if(browser)await browser.close();server.kill();if(log)console.error(log)}
 
