@@ -15,10 +15,19 @@ jobs:
         with:
           node-version: '22'
       - run: python -m pip install -r requirements-build.txt
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
       - run: python -m unittest discover -s tests -p "test_*.py"
       - run: npm test
       - run: python build.py --output dist --work build
+      - run: dotnet tool restore
+      - run: python build.py --updatable --output build/updatable --work build/updatable-work
+      - run: python scripts/package-windows.py --app-dir build/updatable/Freezlit
+      - run: python scripts/test-updater-package.py
       - uses: actions/upload-artifact@v4
         with:
           name: Freezlit-Windows
-          path: dist/Freezlit.exe
+          path: |
+            dist/Freezlit.exe
+            dist/windows-release/

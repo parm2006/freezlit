@@ -1,3 +1,4 @@
 pywebview>=6.0,<7
 
 Pillow>=12.1,<13
+velopack==1.2.161; sys_platform == "win32"

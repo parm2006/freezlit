@@ -1,0 +1,47 @@
+name: Windows installer and update feed
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: python -m pip install -r requirements-build.txt
+      - run: python -m unittest discover -s tests -p "test_*.py"
+      - run: npm test
+      - name: Verify release tag matches app version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag must match package.json version' }
+      - run: dotnet tool restore
+      - run: python build.py --updatable
+      - run: python scripts/package-windows.py
+      - run: python scripts/test-updater-package.py --app-dir dist/Freezlit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Freezlit-Windows-Updatable
+          path: dist/windows-release/
+      - name: Prepare draft release with installer and updater packages
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $assets = @('dist/windows-release/FreezlitSetup.exe', 'dist/windows-release/releases.win.json', 'dist/windows-release/SHA256SUMS-Windows.txt')
+          $assets += (Get-ChildItem dist/windows-release/*.nupkg).FullName
+          gh release create $env:GITHUB_REF_NAME @assets --draft --verify-tag --generate-notes --title "Freezlit $env:GITHUB_REF_NAME"

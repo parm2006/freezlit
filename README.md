@@ -4,7 +4,9 @@ A free Windows and Mac study app that keeps your cards, images, and progress on 
 
 ## Windows install
 
-Download **Freezlit-Windows-v1.4.2.zip** from [Releases](https://github.com/parm2006/freezlit/releases/latest), extract it, then run **Install Freezlit.cmd**. It installs for your Windows user and adds Desktop and Start Menu shortcuts. No administrator access is needed. You can also run **Freezlit.exe** directly from the extracted folder.
+Close Freezlit, then download **FreezlitSetup.exe** from [Releases](https://github.com/parm2006/freezlit/releases/latest) and run it once. It installs for your Windows user and adds **Freezlit** and **Update Freezlit** shortcuts to your Desktop and Start Menu. No administrator access is needed. Existing decks, images and progress are preserved. This new installer replaces the old copy-based installation; older releases need this one-time installation before they can update themselves.
+
+After that, open **Update Freezlit**, download the available update, close the study window, and choose **Install and reopen**. Both Freezlit and its updater are updated together. No repeated installer download is needed. Updates are checked only when you run the updater. See [UPDATES.md](UPDATES.md) for release publishing, verification and troubleshooting. The standalone one-file executable remains available for portable use, but needs the new installer to enable this update flow.
 
 **Python is bundled in Freezlit.exe; no Python or pip installation is needed to use the release.** Windows 10/11, 64-bit, with Microsoft Edge WebView2 Runtime is required. Most Windows installations already have it. If the app reports it missing, install the [Microsoft WebView2 Evergreen Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/). The executable is unsigned; Windows may show a reputation warning.
 
