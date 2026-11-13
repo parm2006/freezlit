@@ -92,7 +92,7 @@ class UpdaterTests(unittest.TestCase):
         with patch('updater.sys.executable', str(self.root / 'Freezlit.exe')), patch('updater.sys.frozen', True, create=True):
             self.assertIsNone(installation_root())
             (self.root / 'sq.version').write_text('manifest')
-            self.assertEqual(installation_root(), self.root.parent)
+            self.assertEqual(installation_root(), self.root.resolve().parent)
 
     def test_uninstalled_updater_has_actionable_message(self):
         with patch('updater.installation_root', return_value=None):

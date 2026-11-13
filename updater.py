@@ -46,7 +46,7 @@ def update_shortcuts(remove=False):
     if root is None:
         return
     # A custom/QA installation must not change the user's real shortcuts.
-    if root != Path(os.environ.get('LOCALAPPDATA', '')) / 'FreezlitDesktop':
+    if root != (Path(os.environ.get('LOCALAPPDATA', '')) / 'FreezlitDesktop').resolve():
         return
     command = ['powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
                '-File', str(resources() / 'scripts' / 'updater-shortcuts.ps1'), '-InstallRoot', str(root)]
