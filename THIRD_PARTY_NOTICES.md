@@ -2,6 +2,10 @@
 
 Freezlit's own source is licensed under the MIT license in LICENSE.
 
+Windows installation and updates use Velopack 1.2.161 (MIT), including its native
+Setup.exe/Update.exe helpers and Python extension. Its license is included in
+third-party-licenses/Velopack-LICENSE.txt. Upstream: https://github.com/velopack/velopack.
+
 The Windows executable embeds Python 3.12.14 and uses pywebview 6.2.1,
 pythonnet 3.2.1, clr_loader 0.3.1, cffi 2.1.1, bottle 0.13.4,
 typing_extensions 4.16.0, and proxy_tools 0.1.0. It was packaged with
