@@ -64,7 +64,7 @@ try{
   }else{
    const choices=page.locator('[data-action="answer"]');
    assert.equal(await choices.count(),4,'Distractors come from the whole deck even for a small remaining batch');
-   await (wrong?choices.filter({hasNotText:expected}).first():choices.filter({hasText:expected})).click();
+   if(wrong)await choices.filter({hasNotText:expected}).first().click();else{const labels=await choices.evaluateAll(nodes=>nodes.map(n=>n.dataset.answer));await page.locator('.question-face').click();await page.keyboard.press(['n','m',',','.'][labels.indexOf(expected)])}
   }
   if(accept){
    await page.locator('[data-action="accept-practice"]').click();
