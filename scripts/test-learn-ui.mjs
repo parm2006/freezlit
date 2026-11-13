@@ -9,6 +9,7 @@ const now=Date.now();
 const library={version:1,settings:{newLimit:7,reviewLimit:200},history:[],records:{},decks:[{id:'learn-test',title:'Learn test',cards:Array.from({length:9},(_,i)=>({id:String(i),term:`Term ${i}`,definition:`Answer ${i}`,schedule:{},...(i===8?{learnSchedule:{forward:{box:1,due:now-1000}}}:{})}))}]};
 library.decks[0].cards[0].definition='Alpha | Beta';
 for(const card of library.decks[0].cards)card.additionalInfo=`Synthetic hint ${card.id}`;
+library.decks.push({id:'second-deck',title:'Second test deck',cards:[{id:'second-card',term:'Sample prompt',definition:'Sample answer',schedule:{}}]});
 const records=flattenLibrary(library);
 const snapshot=()=>{
  const root=JSON.parse(records.get(JSON.stringify(['root'])));
@@ -100,6 +101,11 @@ try{
  assert.equal(await page.locator('.additional-info:visible').count(),0);
  await hints.check();assert.equal(await page.locator('.additional-info:visible').count(),2);
  assert.equal(await page.locator('input[name="q0"]').inputValue(),'Unfinished test answer');
+ await page.locator('.deck-link[data-id="second-deck"]').click();
+ await page.evaluate(()=>window.freezlitFlushPendingWork());await page.reload();
+ assert.equal(await page.locator('.deck-link.active').getAttribute('data-id'),'second-deck');
+ const rootKey=JSON.stringify(['root']),root=JSON.parse(records.get(rootKey));root.decks=root.decks.filter(id=>id!=='second-deck');records.set(rootKey,JSON.stringify(root));
+ await page.reload();assert.equal(await page.locator('.deck-link.active').getAttribute('data-id'),'learn-test');
  assert.deepEqual(errors,[]);
  console.log('PASS Learn UI: saved hint toggle without answer loss, alternate answers, full-deck choices, correction advance, batches, consolidation, saved quota');
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve))}
