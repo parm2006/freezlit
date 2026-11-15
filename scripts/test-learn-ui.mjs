@@ -80,18 +80,28 @@ try{
  const firstBatch=new Set();for(let i=0;i<10;i++)firstBatch.add(await answer());
  assert.deepEqual([...firstBatch].sort(),['Term 0','Term 1','Term 2','Term 3','Term 4']);
  assert.equal(await page.locator('.question-face').innerText(),'Term 5');
- await answer(true,true);for(let i=0;i<3;i++)await answer();
- // Seven learned cards now appear in the final shuffled check.
- const final=new Set();for(let i=0;i<7;i++)final.add(await answer());
- assert.equal(final.size,7);await page.getByRole('heading',{name:'Learning complete.'}).waitFor();
+ await answer(true,true);for(let i=0;i<5;i++)await answer();
+ // Every fresh card appears in the final check despite the saved seven-card cap.
+ const final=new Set();for(let i=0;i<8;i++)final.add(await answer());
+ assert.equal(final.size,8);await page.getByRole('heading',{name:'Learning complete.'}).waitFor();
+ assert.equal(await page.locator('.complete').innerText().then(s=>/allowance|tomorrow|limit/i.test(s)),false);
+ for(const width of [1180,760]){
+  await page.setViewportSize({width,height:800});
+  await page.screenshot({path:fileURLToPath(new URL('../build/qa-results/unlimited-learn-'+width+'.png',import.meta.url))});
+ }
+ await page.setViewportSize({width:1180,height:800});
  await page.evaluate(()=>window.freezlitFlushPendingWork());
  const saved=snapshot().decks[0].cards;
  assert.equal(saved[8].learnSchedule.forward.box,2);
- assert.ok(saved.slice(0,7).every(c=>c.learnSchedule.forward.box===1&&c.learnSchedule.forward.checkedAt));
- assert.equal(saved[7].learnSchedule,undefined);
+ assert.ok(saved.slice(0,8).every(c=>c.learnSchedule.forward.box===1&&c.learnSchedule.forward.checkedAt));
+ assert.equal(snapshot().settings.newLimit,undefined);assert.equal(snapshot().settings.reviewLimit,undefined);
  assert.equal(snapshot().history.find(h=>h.cardId==='5').ok,true,'Correction updates the original history entry');
  await page.reload();await page.locator('[data-mode="learn"]').click();await page.locator('[data-action="start"]').click();
  await page.getByRole('heading',{name:'Learning complete.'}).waitFor();
+ await page.getByRole('button',{name:'Practice all cards',exact:true}).click();
+ await page.locator('.question-face').waitFor();
+ assert.equal(await page.locator('[data-mode="write"]').getAttribute('class'),'selected');
+ assert.equal(await page.locator('#answer').isVisible(),true,'Practice remains available after Learn is complete');
  assert.equal(await hints.isChecked(),false,'Hint visibility survives reload');
  assert.ok(snapshot().decks[0].cards.every(c=>c.additionalInfo===`Synthetic hint ${c.id}`));
  await page.locator('[data-mode="test"]').click();
@@ -106,6 +116,15 @@ try{
  assert.equal(await page.locator('.deck-link.active').getAttribute('data-id'),'second-deck');
  const rootKey=JSON.stringify(['root']),root=JSON.parse(records.get(rootKey));root.decks=root.decks.filter(id=>id!=='second-deck');records.set(rootKey,JSON.stringify(root));
  await page.reload();assert.equal(await page.locator('.deck-link.active').getAttribute('data-id'),'learn-test');
+ await page.locator('[data-action="settings"]').click();
+ assert.equal(await page.locator('#new-limit,#review-limit').count(),0);
+ await page.locator('#voice-lang').selectOption('es-ES');await page.locator('[data-action="save-settings"]').click();
+ await page.evaluate(()=>window.freezlitFlushPendingWork());assert.equal(snapshot().settings.voiceLang,'es-ES');
+ for(const width of [1180,760]){
+  await page.setViewportSize({width,height:800});
+  await page.screenshot({path:fileURLToPath(new URL('../build/qa-results/unlimited-settings-'+width+'.png',import.meta.url))});
+ }
+ await page.reload();await page.locator('[data-action="settings"]').click();assert.equal(await page.locator('#voice-lang').inputValue(),'es-ES');
  assert.deepEqual(errors,[]);
- console.log('PASS Learn UI: saved hint toggle without answer loss, alternate answers, full-deck choices, correction advance, batches, consolidation, saved quota');
+ console.log('PASS Learn UI: saved hint toggle without answer loss, alternate answers, full-deck choices, correction advance, batches, consolidation, removed limits, saved language');
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve))}

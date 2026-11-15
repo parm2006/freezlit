@@ -51,15 +51,15 @@ Unsupported wording: "Decompiled Quizlet," "all Quizlet and Anki features," "exa
 
 ## Verified engine behavior in this release
 
-The independently written review engine uses SM-2-inspired interval growth with Again/Hard/Good/Easy ratings, one-minute relearning, ten-minute learning, and a maximum interval of 36,500 days. It is not FSRS. Forward and reverse schedules are stored independently. Daily new/review limits apply per deck and direction: the frontend supplies history for the selected deck. Practice/game events do not consume the review allowance; learning repeats remain available after the review limit; review allowance counts distinct cards.
+The independently written review engine uses SM-2-inspired interval growth with Again/Hard/Good/Easy ratings, one-minute relearning, ten-minute learning, and a maximum interval of 36,500 days. It is not FSRS. Forward and reverse schedules are stored independently. All eligible new cards and due reviews are available without daily caps. Learning repeats remain available when due.
 
-Learn uses a separate Leitner schedule for each direction. Due cards come first: correct recalls advance through boxes due after 1, 3, and 7 days; misses return to Box 1 for tomorrow. New cards follow in batches of at most five, with two consecutive correct answers per card before the next batch opens. Misses reset the streak and return after two other cards when available. A shuffled final check repeats missed cards until recalled. The daily new-card setting applies per deck and direction across restarts; more than 40 cards in Box 1 pauses new cards. Incomplete batches resume with fresh streaks, and unfinished final checks resume until completed.
+Learn uses a separate Leitner schedule for each direction. Due cards come first: correct recalls advance through boxes due after 1, 3, and 7 days; misses return to Box 1 for tomorrow. New cards follow in batches of at most five, with two consecutive correct answers per card before the next batch opens. Misses reset the streak and return after two other cards when available. A shuffled final check repeats missed cards until recalled. New cards remain available regardless of how many have been studied today or are in Box 1. Incomplete batches resume with fresh streaks, and unfinished final checks resume until completed.
 
 The study toolbar's **Additional info** checkbox shows or hides optional hints in flashcards, practice, and tests. The preference is saved locally, applies immediately without restarting the current question, and leaves the card's information intact.
 
 In the deck editor, **Ctrl+S** (or **Command+S** on Mac) runs the same save action as **Save deck**.
 
-Automated engine contract checks verify review transitions, independent directions, daily caps, grading, generated test consistency, quoted CSV/TSV parsing and library validation. Imports validate IDs, history, settings, scheduling bounds and embedded image data syntax; actual image decoding remains the browser's responsibility. Image-only answers support manual recall in flashcards/review. Automatically graded tests need answer text, so image-only answers are excluded in the selected direction; reversing an image-only-answer card allows its image to be the prompt when the other side has text.
+Automated engine contract checks verify review transitions, independent directions, uncapped study queues, grading, generated test consistency, quoted CSV/TSV parsing and library validation. Imports validate IDs, history, settings, scheduling bounds and embedded image data syntax; actual image decoding remains the browser's responsibility. Image-only answers support manual recall in flashcards/review. Automatically graded tests need answer text, so image-only answers are excluded in the selected direction; reversing an image-only-answer card allows its image to be the prompt when the other side has text.
 
 ## Delivered mode coverage and remaining gaps
 
@@ -73,4 +73,4 @@ This release does not implement full Anki cloze/image-occlusion note types, labe
 
 ## Version 1.2 behavior
 
-Spaced-review sessions shuffle their eligible queue while preserving due dates and daily limits. Wrong practice/test answers can be marked **I was correct**; tests retain the original input with the corrected result. Normal typed grading lowercases and removes all whitespace; Exact grading remains strict.
+Spaced-review sessions shuffle their eligible queue while preserving due dates. Wrong practice/test answers can be marked **I was correct**; tests retain the original input with the corrected result. Normal typed grading lowercases and removes all whitespace; Exact grading remains strict.

@@ -2,7 +2,7 @@ import {uid} from './engine.js';
 
 export function generateStarterLibrary(){
  const make=(term,definition)=>({id:uid(),term,definition,notes:'',tags:[],starred:false,suspended:false,schedule:{}});
- return {version:1,settings:{newLimit:20,reviewLimit:200},history:[],records:{},decks:[{id:uid(),title:'Active Recall',description:'',color:'green',cards:[
+ return {version:1,settings:{},history:[],records:{},decks:[{id:uid(),title:'Active Recall',description:'',color:'green',cards:[
   make('Active recall','Retrieving information from memory instead of rereading it.'),
   make('Spaced repetition','Reviewing material at increasing intervals to strengthen long-term memory.'),
   make('Interleaving','Mixing related topics during practice.'),

@@ -4,14 +4,13 @@ const sameDay=(a,b)=>new Date(a).toDateString()===new Date(b).toDateString();
 const state=(card,direction)=>card.learnSchedule?.[direction];
 function put(card,direction,value){card.learnSchedule??={};card.learnSchedule[direction]=value}
 
-export function startLearn(cards,direction,newLimit,now=Date.now(),quotaCards=cards){
+export function startLearn(cards,direction,now=Date.now()){
  const available=cards.filter(c=>!c.suspended&&(!c.buriedUntil||c.buriedUntil<=now));
- const started=quotaCards.filter(c=>sameDay(state(c,direction)?.startedAt,now)).length;
  const pending=available.filter(c=>state(c,direction)?.box===0);
- const fresh=available.filter(c=>!state(c,direction)).slice(0,Math.max(0,newLimit-started));
+ const fresh=available.filter(c=>!state(c,direction));
  const reviews=shuffle(available.filter(c=>state(c,direction)?.box>0&&state(c,direction).due<=now));
  const consolidation=available.filter(c=>{const s=state(c,direction);return sameDay(s?.learnedAt,now)&&!sameDay(s?.checkedAt,now)});
- const session={direction,quotaCards,list:reviews,index:0,phase:'review',pending:[...pending,...fresh],consolidation,mastered:Object.create(null),attempts:0,hits:0,reviewed:0,learned:0,blocked:false};
+ const session={direction,list:reviews,index:0,phase:'review',pending:[...pending,...fresh],consolidation,mastered:Object.create(null),attempts:0,hits:0,reviewed:0,learned:0};
  session.total=new Set([...reviews,...pending,...fresh,...consolidation].map(c=>c.id)).size;
  for(const c of consolidation)session.mastered[c.id]=2;
  if(!reviews.length)nextPhase(session,now);
@@ -20,11 +19,6 @@ export function startLearn(cards,direction,newLimit,now=Date.now(),quotaCards=ca
 
 function nextPhase(session,now){
  session.index=0;
- if(session.quotaCards.filter(c=>state(c,session.direction)?.box===1).length>40){
-  session.blocked=true;
-  const pending=session.pending.filter(c=>state(c,session.direction)?.box===0);
-  session.total-=session.pending.length-pending.length;session.pending=pending;
- }
  if(session.pending.length){
   session.phase='batch';session.list=session.pending.splice(0,5);session.batch=[...session.list];
   for(const c of session.list)if(!state(c,session.direction))put(c,session.direction,{box:0,due:now,startedAt:now});

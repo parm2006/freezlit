@@ -4,8 +4,7 @@ let passed=0, failed=0;
 async function test(name, fn) { try {await fn();passed++;console.log('PASS '+name)}catch(e){failed++;console.log('FAIL '+name+' — '+e.message)}}
 const now=new Date(2026,9,14,12).getTime();
 const card=(id,extra={})=>({id,term:'Term '+id,definition:'Answer '+id,schedule:{},...extra});
-const lib=(extra={},cExtra={})=>({version:1,settings:{newLimit:20,reviewLimit:200},history:[],records:{},decks:[{id:'deck',title:'Deck',cards:[card('one',cExtra)]}],...extra});
-const limits={newLimit:2,reviewLimit:2};
+const lib=(extra={},cExtra={})=>({version:1,settings:{},history:[],records:{},decks:[{id:'deck',title:'Deck',cards:[card('one',cExtra)]}],...extra});
 await test('Good learns for ten minutes, then graduates after next recall',()=>{
  const first=E.schedule({},3,now); assert.equal(first.state,'learning');assert.equal(first.due,now+600000);
  const next=E.schedule(first,3,first.due);assert.equal(next.state,'review');assert.equal(next.interval,1);assert.equal(next.due,first.due+E.DAY);
@@ -25,33 +24,22 @@ await test('Review success lengthens interval; ease has a floor',()=>{
 });
 await test('Directions have independent due state and media orientation',()=>{
  const c=card('a',{termImage:'term.png',definitionImage:'definition.png',schedule:{forward:E.schedule({},4,now)}});
- assert.equal(E.queue([c],'forward',limits,[],now).length,0);
- assert.equal(E.queue([c],'reverse',limits,[],now).length,1);
+ assert.equal(E.queue([c],'forward',now).length,0);
+ assert.equal(E.queue([c],'reverse',now).length,1);
  assert.deepEqual(E.face(c,'reverse'),{prompt:c.definition,answer:c.term,promptImage:'definition.png',answerImage:'term.png'});
 });
 await test('Due queue sorts overdue cards and excludes suspension/bury/future',()=>{
  const due=(id,t,extra={})=>card(id,{schedule:{forward:{state:'review',due:t}},...extra});
- assert.deepEqual(E.queue([due('later',now-1),due('first',now-100),due('future',now+1),due('buried',now-2,{buriedUntil:now+100}),due('suspended',now-3,{suspended:true})],'forward',limits,[],now).map(c=>c.id),['first','later']);
+ assert.deepEqual(E.queue([due('later',now-1),due('first',now-100),due('future',now+1),due('buried',now-2,{buriedUntil:now+100}),due('suspended',now-3,{suspended:true})],'forward',now).map(c=>c.id),['first','later']);
 });
-await test('New and review limits honor today and direction',()=>{
- const cards=[card('a'),card('b'),card('c')];
- const history=[{at:now,cardId:'x',direction:'forward',source:'review',wasNew:true},{at:now,cardId:'y',direction:'reverse',source:'review',wasNew:true},{at:now-E.DAY,cardId:'z',direction:'forward',source:'review',wasNew:true}];
- assert.equal(E.queue(cards,'forward',limits,history,now).length,1);
- assert.equal(E.queue(cards,'forward',{newLimit:0,reviewLimit:0},[],now).length,0);
-});
-await test('Practice game results do not consume spaced-review allowance',()=>{
- const c=card('due',{schedule:{forward:{state:'review',due:now-1}}});
- const history=[{at:now,cardId:'x',direction:'forward',source:'match',ok:true},{at:now,cardId:'y',direction:'forward',source:'write',ok:true}];
- assert.equal(E.queue([c],'forward',limits,history,now).length,1);
-});
-await test('Due learning cards remain available after review cap is exhausted',()=>{
- const c=card('learn',{schedule:{forward:{state:'learning',due:now-1}}});
- assert.equal(E.queue([c],'forward',{newLimit:0,reviewLimit:0},[],now).length,1);
-});
-await test('Daily review cap counts distinct reviewed cards, not short repeats',()=>{
- const c=card('due',{schedule:{forward:{state:'review',due:now-1}}});
- const history=[{at:now,cardId:'x',direction:'forward',source:'review',wasNew:false},{at:now,cardId:'x',direction:'forward',source:'review',wasNew:false}];
- assert.equal(E.queue([c],'forward',limits,history,now).length,1);
+await test('All new and due cards are available beyond the old daily caps',()=>{
+ const fresh=Array.from({length:250},(_,i)=>card('new-'+i));
+ const reviews=Array.from({length:250},(_,i)=>card('due-'+i,{schedule:{forward:{state:'review',due:now-1}}}));
+ const learning=card('learning',{schedule:{forward:{state:'learning',due:now-1}}});
+ const cards=[...reviews,...fresh,learning];
+ const first=E.queue(cards,'forward',now);
+ assert.equal(first.length,501);assert.equal(first[0],learning);
+ assert.deepEqual(E.queue(cards,'forward',now),first,'Restarting does not reduce available cards');
 });
 await test('Typed answers support alternates, whitespace, Unicode and strict case',()=>{
  assert.ok(E.correct('  HELLO! ','hello|bonjour'));assert.ok(E.correct('Ａ','a'));
@@ -160,8 +148,18 @@ await test('Library validates large embedded images without recursive regex over
  assert.equal(E.validateLibrary(lib({}, {termImage:image})).decks[0].cards[0].termImage.length,image.length);
 });
 await test('Library rejects malformed history before queue can crash',()=>assert.throws(()=>E.validateLibrary(lib({history:'not an array'}))));
-await test('Library rejects invalid limits and corrupt scheduling state',()=>{
- assert.throws(()=>E.validateLibrary(lib({settings:{newLimit:-4,reviewLimit:'oops'}})));
+await test('Library removes legacy limits while preserving other settings and progress',()=>{
+ for(const limits of [{newLimit:0,reviewLimit:0},{newLimit:20,reviewLimit:200},{newLimit:-4,reviewLimit:'oops'}]){
+  const value=lib({settings:{...limits,voiceLang:'es-ES',lastDeckId:'deck'},history:[{at:now,cardId:'one',deckId:'deck',direction:'forward',source:'review',wasNew:true}]});
+  const before=structuredClone(value);E.validateLibrary(value);
+  assert.deepEqual(value.settings,{voiceLang:'es-ES',lastDeckId:'deck'});
+  assert.deepEqual(value.decks,before.decks);assert.deepEqual(value.history,before.history);
+  assert.equal(E.queue(value.decks[0].cards,'forward',now).length,1);
+ }
+ assert.deepEqual(E.validateLibrary(lib({settings:undefined})).settings,{});
+});
+await test('Library rejects invalid settings objects and corrupt scheduling state',()=>{
+ for(const settings of [null,[],42])assert.throws(()=>E.validateLibrary(lib({settings})));
  assert.throws(()=>E.validateLibrary(lib({}, {schedule:{forward:{due:'bad',interval:-3,ease:null}}})));
 });
 await test('Twenty questions from eight cards cover full shuffled cycles without adjacent repeats',()=>{

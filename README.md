@@ -14,9 +14,9 @@ After that, open **Update Freezlit**, download the available update, close the s
 
 Windows is the only supported platform. macOS and Linux builds, testing, and releases are discontinued. Older Mac downloads and source are historical and unsupported.
 
-## New in 1.3.3
+## New in 1.5.3
 
-Quizlet text import with literal quotes and Unicode preserved; clipboard image paste; safer saves, recoverable editor/test drafts, and clearer library compatibility messages. Windows also recovers an existing previous or legacy Recall library when the default library is missing.
+Study without daily new-card or review caps. Learn no longer pauses new cards when Box 1 fills up, and **Practice all cards** lets you keep practicing after completing Learn. Existing study progress is preserved.
 
 ## Import cards
 
@@ -32,8 +32,10 @@ Bitmap and embedded clipboard images are supported. An unreadable paste leaves t
 
 ## Study your way
 
+Study has no daily new-card or review caps.
+
 - **Flashcards:** flip, shuffle, autoplay, listen, star, and choose either card direction.
-- **Spaced review:** Again / Hard / Good / Easy, preview intervals, daily limits, bury, suspend, and independent forward/reverse progress.
+- **Spaced review:** Again / Hard / Good / Easy, preview intervals, bury, suspend, and independent forward/reverse progress.
 - **Learn:** choices followed by written recall; each card must be recalled twice. Misses return.
 - **Write and Spell:** typed answers, correction, retry missed cards; Spell uses available system voices.
 - **Test:** request an exact question count, including more questions than the deck has cards; multiple choice, written, true/false, and matching questions; grade, accept your own answer, and practice mistakes. Larger tests repeat cards in shuffled cycles.

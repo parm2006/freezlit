@@ -35,17 +35,12 @@ export function schedule(old={},rating,now=Date.now()){
  s.reps++;s.lastReview=now;return s;
 }
 export function intervalLabel(s,now=Date.now()){const minutes=Math.round((s.due-now)/60000);return minutes<60?`${minutes} min`:minutes<1440?`${Math.round(minutes/60)} hr`:`${Math.round(minutes/1440)} days`}
-export function queue(cards,direction,settings,history,now=Date.now()){
- // Caller passes cards and history from the same deck. Limits are per deck/direction.
- // Learning repeats never consume the daily allowance for distinct review cards.
+export function queue(cards,direction,now=Date.now()){
  const candidates=cards.filter(c=>!c.suspended&&(!c.buriedUntil||c.buriedUntil<=now));
- const today=new Date(now).toDateString();const counts=history.filter(h=>h.source==='review'&&h.direction===direction&&new Date(h.at).toDateString()===today);
- const newSeen=new Set(counts.filter(h=>h.wasNew).map(h=>h.cardId));const reviewed=new Set(counts.filter(h=>!h.wasNew&&!newSeen.has(h.cardId)).map(h=>h.cardId));
  const due=candidates.filter(c=>c.schedule?.[direction]?.due<=now).sort((a,b)=>a.schedule[direction].due-b.schedule[direction].due);
  const learning=due.filter(c=>c.schedule[direction].state==='learning'||c.schedule[direction].state==='relearning');
  const reviews=due.filter(c=>!learning.includes(c));
- const continued=reviews.filter(c=>reviewed.has(c.id));const unseen=reviews.filter(c=>!reviewed.has(c.id)).slice(0,Math.max(0,settings.reviewLimit-reviewed.size));
- const fresh=candidates.filter(c=>!c.schedule?.[direction]).slice(0,Math.max(0,settings.newLimit-newSeen.size));return [...learning,...continued,...unseen,...fresh];
+ const fresh=candidates.filter(c=>!c.schedule?.[direction]);return [...learning,...reviews,...fresh];
 }
 export function makeTest(cards,direction,types,count){
  if(!Array.isArray(types)||!types.length||types.some(t=>!['choice','written','tf','matching'].includes(t)))throw Error('Select at least one valid question type.');
@@ -83,8 +78,9 @@ export function validateLibrary(value){
  const timestamp=v=>integer(v,0,8640000000000000);
  const id=v=>typeof v==='string'&&v.length>0&&v.length<=200;
  if(!object(value)||value.version!==1||!Array.isArray(value.decks))throw Error('Use a Recall JSON export (version 1).');
- if(value.settings===undefined)value.settings={newLimit:20,reviewLimit:200};
- if(!object(value.settings)||!integer(value.settings.newLimit,0,100000)||!integer(value.settings.reviewLimit,0,100000))throw Error('Daily card limits must be whole numbers from 0 to 100000.');
+ if(value.settings===undefined)value.settings={};
+ if(!object(value.settings))throw Error('Settings must be an object.');
+ delete value.settings.newLimit;delete value.settings.reviewLimit;
  if(value.history===undefined)value.history=[];
  if(!Array.isArray(value.history)||value.history.length>1000000)throw Error('Review history must be an array of at most one million entries.');
  for(const h of value.history){if(!object(h)||!timestamp(h.at)||!id(h.cardId)||!id(h.deckId)||!['forward','reverse'].includes(h.direction)||typeof h.source!=='string'||h.wasNew!==undefined&&typeof h.wasNew!=='boolean'||h.ok!==undefined&&typeof h.ok!=='boolean'||h.rating!==undefined&&!integer(h.rating,1,4))throw Error('Review history contains an invalid entry.');}
