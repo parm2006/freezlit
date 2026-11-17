@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {flattenLibrary} from '../web/storage-delta.js';
 
 const now=Date.now();
-const library={version:1,settings:{newLimit:7,reviewLimit:200},history:[],records:{},decks:[{id:'learn-test',title:'Learn test',cards:Array.from({length:9},(_,i)=>({id:String(i),term:`Term ${i}`,definition:`Answer ${i}`,schedule:{},...(i===8?{learnSchedule:{forward:{box:1,due:now-1000}}}:{})}))}]};
+const library={version:1,settings:{newLimit:7,reviewLimit:200},history:[],records:{},decks:[{id:'learn-test',title:'Learn test',cards:Array.from({length:9},(_,i)=>({id:String(i),term:`Term ${i}`,definition:`Answer ${i}`,schedule:{},learnSchedule:{forward:{box:3,due:now+604800000,learnedAt:now,checkedAt:now}}}))}]};
 library.decks[0].cards[0].definition='Alpha | Beta';
 for(const card of library.decks[0].cards)card.additionalInfo=`Synthetic hint ${card.id}`;
 library.decks.push({id:'second-deck',title:'Second test deck',cards:[{id:'second-card',term:'Sample prompt',definition:'Sample answer',schedule:{}}]});
@@ -51,12 +51,7 @@ try{
  await page.locator('[data-mode="learn"]').click();
  await page.locator('#random').uncheck();
  await page.locator('[data-mode="learn"]').focus();await page.keyboard.press('Enter');
- assert.equal(await page.locator('.question-face').innerText(),'Term 8','Due cards come first');
- await page.locator('#answer').fill('Partial answer');
- await hints.check();await page.locator('.additional-info').waitFor({state:'visible'});
- assert.equal(await page.locator('#answer').inputValue(),'Partial answer');
- await hints.uncheck();assert.equal(await page.locator('.additional-info').isVisible(),false);
- assert.equal(await page.locator('#answer').inputValue(),'Partial answer');
+ assert.equal(await page.locator('.question-face').innerText(),'Term 0','Previously learned cards are available immediately');
  const answer=async(wrong=false,accept=false)=>{
   const term=await page.locator('.question-face').innerText();
   const expected=library.decks[0].cards.find(c=>c.term===term).definition;
@@ -76,34 +71,43 @@ try{
   }
   return term;
  };
- await answer();assert.equal(await page.locator('.question-face').innerText(),'Term 0');
- const firstBatch=new Set();for(let i=0;i<10;i++)firstBatch.add(await answer());
+ const firstBatch=new Set();for(let i=0;i<5;i++)firstBatch.add(await answer());
+ await page.locator('#answer').fill('Partial answer');
+ await hints.check();await page.locator('.additional-info').waitFor({state:'visible'});
+ assert.equal(await page.locator('#answer').inputValue(),'Partial answer');
+ await hints.uncheck();assert.equal(await page.locator('.additional-info').isVisible(),false);
+ assert.equal(await page.locator('#answer').inputValue(),'Partial answer');
+ for(let i=0;i<5;i++)firstBatch.add(await answer());
  assert.deepEqual([...firstBatch].sort(),['Term 0','Term 1','Term 2','Term 3','Term 4']);
  assert.equal(await page.locator('.question-face').innerText(),'Term 5');
- await answer(true,true);for(let i=0;i<5;i++)await answer();
- // Every fresh card appears in the final check despite the saved seven-card cap.
- const final=new Set();for(let i=0;i<8;i++)final.add(await answer());
- assert.equal(final.size,8);await page.getByRole('heading',{name:'Learning complete.'}).waitFor();
- assert.equal(await page.locator('.complete').innerText().then(s=>/allowance|tomorrow|limit/i.test(s)),false);
+ await answer(true,true);for(let i=0;i<7;i++)await answer();
+ const check=new Set();for(let i=0;i<9;i++)check.add(await answer());
+ assert.equal(check.size,9);
+ // Finishing a full round immediately starts the next one in Learn, with choices.
+ for(let round=0;round<2;round++){
+  assert.equal(await page.locator('[data-mode="learn"]').getAttribute('class'),'selected');
+  assert.equal(await page.locator('[data-action="answer"]').count(),4);
+  assert.equal(await page.locator('.complete,[data-action="practice-all"]').count(),0);
+  assert.equal(await page.locator('.question-face').innerText(),'Term 0');
+  for(let i=0;i<27;i++)await answer();
+ }
  for(const width of [1180,760]){
   await page.setViewportSize({width,height:800});
-  await page.screenshot({path:fileURLToPath(new URL('../build/qa-results/unlimited-learn-'+width+'.png',import.meta.url))});
+  await page.screenshot({path:fileURLToPath(new URL('../build/qa-results/continuous-learn-'+width+'.png',import.meta.url))});
  }
  await page.setViewportSize({width:1180,height:800});
  await page.evaluate(()=>window.freezlitFlushPendingWork());
  const saved=snapshot().decks[0].cards;
- assert.equal(saved[8].learnSchedule.forward.box,2);
- assert.ok(saved.slice(0,8).every(c=>c.learnSchedule.forward.box===1&&c.learnSchedule.forward.checkedAt));
+ assert.deepEqual(saved.map(c=>c.learnSchedule),library.decks[0].cards.map(c=>c.learnSchedule));
  assert.equal(snapshot().settings.newLimit,undefined);assert.equal(snapshot().settings.reviewLimit,undefined);
  assert.equal(snapshot().history.find(h=>h.cardId==='5').ok,true,'Correction updates the original history entry');
  await page.reload();await page.locator('[data-mode="learn"]').click();await page.locator('[data-action="start"]').click();
- await page.getByRole('heading',{name:'Learning complete.'}).waitFor();
- await page.getByRole('button',{name:'Practice all cards',exact:true}).click();
  await page.locator('.question-face').waitFor();
- assert.equal(await page.locator('[data-mode="write"]').getAttribute('class'),'selected');
- assert.equal(await page.locator('#answer').isVisible(),true,'Practice remains available after Learn is complete');
+ assert.equal(await page.locator('[data-mode="learn"]').getAttribute('class'),'selected');
+ assert.equal(await page.locator('[data-action="answer"]').count(),4);
+ assert.equal(await page.locator('.complete,[data-action="practice-all"]').count(),0);
  assert.equal(await hints.isChecked(),false,'Hint visibility survives reload');
- assert.ok(snapshot().decks[0].cards.every(c=>c.additionalInfo===`Synthetic hint ${c.id}`));
+ assert.ok(snapshot().decks[0].cards.every(c=>c.additionalInfo==='Synthetic hint '+c.id));
  await page.locator('[data-mode="test"]').click();
  for(const type of ['choice','tf','matching'])await page.locator(`[data-test-type="${type}"]`).uncheck();
  await page.locator('#test-count').fill('2');await page.locator('[data-action="start"]').click();
@@ -126,5 +130,5 @@ try{
  }
  await page.reload();await page.locator('[data-action="settings"]').click();assert.equal(await page.locator('#voice-lang').inputValue(),'es-ES');
  assert.deepEqual(errors,[]);
- console.log('PASS Learn UI: saved hint toggle without answer loss, alternate answers, full-deck choices, correction advance, batches, consolidation, removed limits, saved language');
+ console.log('PASS Learn UI: saved hint toggle without answer loss, alternate answers, full-deck choices, correction advance, continuous Learn rounds, reload without schedule gates, no completion screen or Write redirect, saved language');
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve))}

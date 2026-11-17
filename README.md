@@ -14,9 +14,9 @@ After that, open **Update Freezlit**, download the available update, close the s
 
 Windows is the only supported platform. macOS and Linux builds, testing, and releases are discontinued. Older Mac downloads and source are historical and unsupported.
 
-## New in 1.5.3
+## New in 1.5.4
 
-Study without daily new-card or review caps. Learn no longer pauses new cards when Box 1 fills up, and **Practice all cards** lets you keep practicing after completing Learn. Existing study progress is preserved.
+Learn runs continuously: it cycles through your cards without a completion screen, due-date gates, daily caps, or switching you into another mode. Previously learned cards are available immediately. Existing cards and study history are preserved.
 
 ## Import cards
 
@@ -36,7 +36,7 @@ Study has no daily new-card or review caps.
 
 - **Flashcards:** flip, shuffle, autoplay, listen, star, and choose either card direction.
 - **Spaced review:** Again / Hard / Good / Easy, preview intervals, bury, suspend, and independent forward/reverse progress.
-- **Learn:** choices followed by written recall; each card must be recalled twice. Misses return.
+- **Learn:** repeating rounds of choices and written recall; each card must be recalled twice. Misses return, and the next round starts automatically.
 - **Write and Spell:** typed answers, correction, retry missed cards; Spell uses available system voices.
 - **Test:** request an exact question count, including more questions than the deck has cards; multiple choice, written, true/false, and matching questions; grade, accept your own answer, and practice mistakes. Larger tests repeat cards in shuffled cycles.
 - **Games:** timed Match, Falling words, Quick quiz, quiz Blocks, match-three Charms, and shared-device Pass & play.

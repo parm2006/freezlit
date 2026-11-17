@@ -1,48 +1,31 @@
-import {DAY,shuffle} from './engine.js';
-
-const sameDay=(a,b)=>new Date(a).toDateString()===new Date(b).toDateString();
-const state=(card,direction)=>card.learnSchedule?.[direction];
-function put(card,direction,value){card.learnSchedule??={};card.learnSchedule[direction]=value}
+import {shuffle} from './engine.js';
 
 export function startLearn(cards,direction,now=Date.now()){
  const available=cards.filter(c=>!c.suspended&&(!c.buriedUntil||c.buriedUntil<=now));
- const pending=available.filter(c=>state(c,direction)?.box===0);
- const fresh=available.filter(c=>!state(c,direction));
- const reviews=shuffle(available.filter(c=>state(c,direction)?.box>0&&state(c,direction).due<=now));
- const consolidation=available.filter(c=>{const s=state(c,direction);return sameDay(s?.learnedAt,now)&&!sameDay(s?.checkedAt,now)});
- const session={direction,list:reviews,index:0,phase:'review',pending:[...pending,...fresh],consolidation,mastered:Object.create(null),attempts:0,hits:0,reviewed:0,learned:0};
- session.total=new Set([...reviews,...pending,...fresh,...consolidation].map(c=>c.id)).size;
- for(const c of consolidation)session.mastered[c.id]=2;
- if(!reviews.length)nextPhase(session,now);
+ const session={direction,cards:available,list:[],index:0,phase:'batch',pending:[...available],consolidation:[],mastered:Object.create(null),attempts:0,hits:0};
+ nextPhase(session);
  return session;
 }
 
-function nextPhase(session,now){
+function nextPhase(session){
  session.index=0;
+ if(!session.pending.length&&!session.consolidation.length){
+  session.pending=[...session.cards];session.mastered=Object.create(null);
+ }
  if(session.pending.length){
   session.phase='batch';session.list=session.pending.splice(0,5);session.batch=[...session.list];
-  for(const c of session.list)if(!state(c,session.direction))put(c,session.direction,{box:0,due:now,startedAt:now});
  }else if(session.consolidation.length){session.phase='consolidation';session.list=shuffle(session.consolidation.splice(0))}
- else{session.phase='done';session.list=[]}
 }
 
-export function advanceLearn(session,ok,now=Date.now()){
- const card=session.list.shift(),direction=session.direction,old=state(card,direction);
- if(session.phase==='review'){
-  const box=ok?Math.min(3,old.box+1):1;
-  session.mastered[card.id]=ok?2:0;
-  put(card,direction,{...old,box,due:now+[0,1,3,7][box]*DAY});session.reviewed++;
- }else if(session.phase==='batch'){
+export function advanceLearn(session,ok){
+ const card=session.list.shift();if(!card)return;
+ if(session.phase==='batch'){
   const streak=session.mastered[card.id]=ok?(session.mastered[card.id]||0)+1:0;
   if(streak<2)session.list.splice(ok?session.list.length:Math.min(2,session.list.length),0,card);
   // Keep the whole batch together until every card has two consecutive recalls.
-  if(!session.list.length){
-   const batch=session.batch||[];
-   for(const c of batch){put(c,direction,{...state(c,direction),box:1,due:now+DAY,learnedAt:now});session.consolidation.push(c);session.learned++}
-  }
+  if(!session.list.length)session.consolidation.push(...session.batch);
  }else if(session.phase==='consolidation'){
-  if(ok)put(card,direction,{...old,checkedAt:now});
-  else session.list.splice(Math.min(2,session.list.length),0,card);
+  if(!ok)session.list.splice(Math.min(2,session.list.length),0,card);
  }
- if(!session.list.length)nextPhase(session,now);
+ if(!session.list.length)nextPhase(session);
 }
