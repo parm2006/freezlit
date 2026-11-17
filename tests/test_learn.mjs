@@ -14,16 +14,21 @@ function round(s){
  while(s.phase==='consolidation'){assert.ok(attempts++<3000);check.add(s.list[0].id);step(s)}
  assert.equal(check.size,s.cards.length);assert.equal(s.phase,'batch');assert.ok(s.list.length);
  assert.equal(Object.keys(s.mastered).length,0);
+ assert.equal(s.masteredCards.size,s.cards.length,'Mastery is retained when the next round starts and counts each card once');
 }
 
 // Every batch still requires two consecutive recalls before advancing.
 const deck=cards(7),s=startLearn(deck,'forward',now);
 assert.equal(s.phase,'batch');assert.equal(s.list.length,5);
+assert.equal(s.masteredCards.size,0);
 for(let i=0;i<9;i++)step(s);
+assert.equal(s.masteredCards.size,4);
 assert.equal(s.list.length,1);assert.equal(s.pending.length,2);
 step(s);assert.deepEqual(s.list.map(c=>c.id),['5','6']);
+assert.equal(s.masteredCards.size,5);
 for(let i=0;i<4;i++)step(s);
 assert.equal(s.phase,'consolidation');assert.equal(s.list.length,7);
+assert.equal(s.masteredCards.size,7);
 const missed=s.list[0];step(s,false);assert.equal(s.list[2],missed);
 for(let i=0;i<7;i++)step(s);
 assert.equal(s.phase,'batch');assert.deepEqual(s.list.map(c=>c.id),['0','1','2','3','4']);
@@ -47,6 +52,7 @@ const before=structuredClone(scheduled);
 for(const direction of ['forward','reverse']){
  const large=startLearn(scheduled,direction,now);assert.equal(large.cards.length,250);
  round(large);round(large);
+ assert.equal(large.masteredCards.size,250,'The mastery counter has no 20-card cap');
  assert.deepEqual(startLearn(scheduled,direction,now).list.map(c=>c.id),['0','1','2','3','4']);
 }
 assert.deepEqual(scheduled,before,'Learn does not change saved scheduling or card content');

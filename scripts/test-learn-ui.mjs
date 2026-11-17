@@ -52,6 +52,7 @@ try{
  await page.locator('#random').uncheck();
  await page.locator('[data-mode="learn"]').focus();await page.keyboard.press('Enter');
  assert.equal(await page.locator('.question-face').innerText(),'Term 0','Previously learned cards are available immediately');
+ assert.equal(await page.locator('.session-top').innerText(),'Learn\n0 / 9 mastered');
  const answer=async(wrong=false,accept=false)=>{
   const term=await page.locator('.question-face').innerText();
   const expected=library.decks[0].cards.find(c=>c.term===term).definition;
@@ -79,6 +80,7 @@ try{
  assert.equal(await page.locator('#answer').inputValue(),'Partial answer');
  for(let i=0;i<5;i++)firstBatch.add(await answer());
  assert.deepEqual([...firstBatch].sort(),['Term 0','Term 1','Term 2','Term 3','Term 4']);
+ assert.equal(await page.locator('.session-top').innerText(),'Learn\n5 / 9 mastered');
  assert.equal(await page.locator('.question-face').innerText(),'Term 5');
  await answer(true,true);for(let i=0;i<7;i++)await answer();
  const check=new Set();for(let i=0;i<9;i++)check.add(await answer());
@@ -89,11 +91,12 @@ try{
   assert.equal(await page.locator('[data-action="answer"]').count(),4);
   assert.equal(await page.locator('.complete,[data-action="practice-all"]').count(),0);
   assert.equal(await page.locator('.question-face').innerText(),'Term 0');
+  assert.equal(await page.locator('.session-top').innerText(),'Learn\n9 / 9 mastered');
   for(let i=0;i<27;i++)await answer();
  }
  for(const width of [1180,760]){
   await page.setViewportSize({width,height:800});
-  await page.screenshot({path:fileURLToPath(new URL('../build/qa-results/continuous-learn-'+width+'.png',import.meta.url))});
+  await page.screenshot({path:fileURLToPath(new URL('../build/qa-results/mastered-learn-'+width+'.png',import.meta.url))});
  }
  await page.setViewportSize({width:1180,height:800});
  await page.evaluate(()=>window.freezlitFlushPendingWork());

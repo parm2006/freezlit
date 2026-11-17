@@ -14,9 +14,9 @@ After that, open **Update Freezlit**, download the available update, close the s
 
 Windows is the only supported platform. macOS and Linux builds, testing, and releases are discontinued. Older Mac downloads and source are historical and unsupported.
 
-## New in 1.5.4
+## New in 1.5.5
 
-Learn runs continuously: it cycles through your cards without a completion screen, due-date gates, daily caps, or switching you into another mode. Previously learned cards are available immediately. Existing cards and study history are preserved.
+Learn shows **X / Y mastered** across all available cards in your selected deck. Each card counts once after two consecutive recalls in the session, and the count stays as rounds repeat. Learn continues without a completion screen, due-date gates, daily caps, or switching you into another mode.
 
 ## Import cards
 
